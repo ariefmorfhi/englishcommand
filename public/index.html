@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070d" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>English Hunter System</title>
+  <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+  <link rel="apple-touch-icon" href="/icon-180.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div id="bg"></div>
+  <header id="topbar" hidden>
+    <div class="brand"><span class="sys-dot"></span>HUNTER SYSTEM</div>
+    <div class="top-right">
+      <span id="mana-chip" class="chip" title="AI examiner casts left today">◇ –</span>
+      <button id="btn-system" class="icon-btn" aria-label="System settings">⚙</button>
+    </div>
+  </header>
+  <main id="app"><div class="loading">Connecting to the System…</div></main>
+  <nav id="nav" hidden>
+    <button data-view="status" class="active"><span>◈</span>Status</button>
+    <button data-view="quest"><span>✦</span>Quest</button>
+    <button data-view="gates"><span>⛩</span>Gates</button>
+    <button data-view="codex"><span>☰</span>Codex</button>
+    <button data-view="raid"><span>⚔</span>Raid</button>
+  </nav>
+  <div id="toasts"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>
