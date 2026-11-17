@@ -130,7 +130,9 @@ Evaluate the learner's response to the task and reply with ONE JSON object only 
 - "phrases": 2-3 useful collocations or phrases taken from your upgraded answer, each with a short "meaning".
 - "next_focus": one concrete thing to practise next.
 
-Watch closely for: verb forms after "to", modals and prepositions; articles (a/an/the); prepositions; subject-verb agreement; tense consistency; word choice.
+Watch closely for: verb forms after "to", modals and prepositions; articles (a/an/the, including "a" before vowel sounds such as "a operations"); prepositions and dependent prepositions ("responsible for", "since/for"); subject-verb agreement; tense consistency (present perfect with "for/since"); word choice.
+Each "explanation" must name the specific rule (e.g. "Use 'an' before a vowel sound", "'responsible' takes 'for' + -ing"). Never write vague explanations such as "use correct word" or "use correct preposition".
+Before choosing the 3-6 corrections, scan the whole response sentence by sentence; prefer recurring patterns over one-off slips.
 If MODE is speaking, the text is an automatic speech-to-text transcript: ignore punctuation, capitalisation and spelling completely, and do not list them as errors. Judge grammar, vocabulary range, coherence and how fully the questions are answered.
 If MODE is writing, also judge task achievement, organisation, and spelling.`;
 
