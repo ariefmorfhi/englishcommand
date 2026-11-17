@@ -1,10 +1,10 @@
 {
-  "name": "English Hunter System",
-  "short_name": "Hunter",
+  "name": "English Command",
+  "short_name": "English",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#05070d",
-  "theme_color": "#05070d",
+  "background_color": "#EAF0F7",
+  "theme_color": "#EAF0F7",
   "icons": [
     { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml" },
     { "src": "/icon-180.png", "sizes": "180x180", "type": "image/png" },

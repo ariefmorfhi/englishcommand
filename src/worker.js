@@ -1,8 +1,8 @@
-// English Hunter System — Cloudflare Worker API
+// English Command — Cloudflare Worker API
 // Storage: D1 (binding DB) · AI feedback: Workers AI (binding AI) · Static app: ASSETS
 
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
-const MANA_MAX = 30; // AI feedback casts per UTC day (keeps usage inside the Workers AI free tier)
+const MANA_MAX = 30; // AI feedback requests per UTC day (keeps usage inside the Workers AI free tier)
 const GATE_XP = { E: 40, D: 60, C: 80, B: 110, A: 150, S: 200 };
 const XP_PER_MIN = 10;
 const CATS = ['verb_form', 'tense', 'article', 'preposition', 'agreement', 'word_choice', 'l1_transfer', 'sentence_structure', 'spelling', 'other'];
@@ -157,7 +157,7 @@ async function runAI(env, userMsg) {
   }
   let r = out?.response ?? out?.choices?.[0]?.message?.content ?? out;
   if (typeof r === 'string') r = parseLooseJson(r);
-  if (!r || typeof r !== 'object') bad('The System could not read the AI reply. Please try again.', 502);
+  if (!r || typeof r !== 'object') bad("The feedback couldn't be read. Try again.", 502);
   return normalizeFeedback(r);
 }
 
@@ -216,7 +216,7 @@ async function route(req, env, url) {
     const token = newToken();
     await db.batch([
       setMetaStmt(db, 'auth', { salt, hash: await hashPass(pass, salt) }),
-      setMetaStmt(db, 'name', str(b.name, 24) || 'Hunter'),
+      setMetaStmt(db, 'name', str(b.name, 24) || 'there'),
       db.prepare('INSERT INTO sessions (token,created_at) VALUES (?,?)').bind(token, now()),
     ]);
     return json({ token });
@@ -266,7 +266,7 @@ async function route(req, env, url) {
     const meta = {};
     for (const r of metaRows.results) { try { meta[r.key] = JSON.parse(r.value); } catch { meta[r.key] = r.value; } }
     return json({
-      name: meta.name || 'Hunter',
+      name: meta.name || 'there',
       targets: meta.targets || null,
       days: days.results,
       today: today.results,
@@ -306,7 +306,7 @@ async function route(req, env, url) {
     if (words < 8) bad('Your answer is too short to evaluate.');
     const seconds = Math.round(num(b.seconds, 0, 7200) || 0);
     const mana = await manaUsed(db);
-    if (mana.used >= MANA_MAX) bad('Mana depleted for today. It regenerates at 07:00 WIB.', 429);
+    if (mana.used >= MANA_MAX) bad("Today's 30 AI feedback requests are used up. They reset at 07:00 WIB.", 429);
 
     const wpm = gate.skill === 'speaking' && seconds >= 20 ? Math.round(words / (seconds / 60)) : null;
     const userMsg = [
@@ -321,7 +321,7 @@ async function route(req, env, url) {
     try { fb = await runAI(env, userMsg); }
     catch (e) {
       if (e instanceof HttpError) throw e;
-      bad('The AI examiner is unavailable right now. Your answer is still on this page - try again in a moment.', 502);
+      bad("AI feedback isn't available right now. Your answer is still on this page — try again in a moment.", 502);
     }
 
     const id = uid();

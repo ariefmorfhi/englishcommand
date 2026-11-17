@@ -1,19 +1,19 @@
-// English Hunter System — content bank (general IELTS + TOEFL, not job-specific)
+// English Command — content bank (general IELTS + TOEFL, not job-specific)
 
 export const CATEGORIES = {
-  verb_form: { name: 'Broken Verb Form', hint: 'Base verb after to / modals; -ing after prepositions; correct participles.' },
-  tense: { name: 'Time Distortion', hint: 'Keep tenses consistent; present perfect vs past simple.' },
-  article: { name: 'Missing Article', hint: 'a / an / the before singular countable nouns.' },
-  preposition: { name: 'Lost Preposition', hint: 'in / on / at, and fixed verb + preposition pairs.' },
-  agreement: { name: 'Agreement Curse', hint: 'Subject and verb must match (he works / they work).' },
-  word_choice: { name: 'Wrong Rune', hint: 'Words that look right but mean something else.' },
-  l1_transfer: { name: 'Mother-Tongue Echo', hint: 'Indonesian structures translated word by word.' },
-  sentence_structure: { name: 'Fractured Sentence', hint: 'Missing subjects/objects, run-ons, word order.' },
-  spelling: { name: 'Glyph Error', hint: 'Spelling mistakes (writing only).' },
-  other: { name: 'Unknown Anomaly', hint: 'Other errors.' },
+  verb_form: { name: 'Verb forms', hint: 'Base verb after to / modals; -ing after prepositions; correct participles.' },
+  tense: { name: 'Tenses', hint: 'Keep tenses consistent; present perfect vs past simple.' },
+  article: { name: 'Articles', hint: 'a / an / the before singular countable nouns.' },
+  preposition: { name: 'Prepositions', hint: 'in / on / at, and fixed verb + preposition pairs.' },
+  agreement: { name: 'Subject–verb agreement', hint: 'Subject and verb must match (he works / they work).' },
+  word_choice: { name: 'Word choice', hint: 'Words that look right but mean something else.' },
+  l1_transfer: { name: 'Indonesian transfer', hint: 'Indonesian structures translated word by word.' },
+  sentence_structure: { name: 'Sentence structure', hint: 'Missing subjects/objects, run-ons, word order.' },
+  spelling: { name: 'Spelling', hint: 'Spelling mistakes (writing only).' },
+  other: { name: 'Other', hint: 'Other errors.' },
 };
 
-// ---------- Debuff drills (offline, no AI cost) ----------
+// ---------- Error drills (offline, no AI cost) ----------
 export const DRILLS = {
   verb_form: [
     { q: 'I want to ___ more about how other countries run operations.', o: ['learning', 'learn', 'learned'], a: 1, why: 'to + base verb.' },
@@ -285,29 +285,29 @@ export const STAR = [
   'Where do you see yourself in five years, and how does this role fit that plan?',
 ];
 
-// ---------- Gate catalogue ----------
+// ---------- Practice tasks (rank letter = level: E Foundation ... S Exam simulation) ----------
 // mode: 'repeat' | 'build' (scored offline) | 'ai' (scored by the AI examiner)
 export const GATES = [
-  { id: 'toefl-repeat', rank: 'E', skill: 'speaking', exam: 'TOEFL', mode: 'repeat', title: 'Listen & Repeat', desc: 'Hear 7 sentences, repeat each one exactly. Scored offline (no mana).', mins: 6 },
-  { id: 'toefl-build', rank: 'E', skill: 'writing', exam: 'TOEFL', mode: 'build', title: 'Build a Sentence', desc: 'Arrange 8 word sets into correct replies. Scored offline (no mana).', mins: 6 },
+  { id: 'toefl-repeat', rank: 'E', skill: 'speaking', exam: 'TOEFL', mode: 'repeat', title: 'Listen & Repeat', desc: 'Hear 7 sentences, repeat each one exactly. Scored on your device.', mins: 6 },
+  { id: 'toefl-build', rank: 'E', skill: 'writing', exam: 'TOEFL', mode: 'build', title: 'Build a sentence', desc: 'Arrange 8 word sets into correct replies. Scored on your device.', mins: 6 },
   { id: 'ielts-p1', rank: 'D', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Speaking Part 1', desc: '4 short questions on a familiar topic. Aim for 2-4 sentences each.', mins: 5, perQ: 40 },
-  { id: 'toefl-interview', rank: 'D', skill: 'speaking', exam: 'TOEFL', mode: 'ai', title: 'Take an Interview', desc: '4 interview questions, about 45 seconds each.', mins: 5, perQ: 45 },
-  { id: 'toefl-email', rank: 'D', skill: 'writing', exam: 'TOEFL', mode: 'ai', title: 'Write an Email', desc: 'Cover all 3 points. Target: 7 minutes, 80-150 words.', mins: 7, minWords: 80 },
-  { id: 'ielts-p2', rank: 'C', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Speaking Part 2 (Cue Card)', desc: '1 minute to prepare, then speak for up to 2 minutes.', mins: 4, prep: 60, perQ: 120 },
-  { id: 'ielts-gt1', rank: 'C', skill: 'writing', exam: 'IELTS GT', mode: 'ai', title: 'Writing Task 1 (Letter)', desc: 'Write at least 150 words in 20 minutes.', mins: 20, minWords: 150 },
-  { id: 'toefl-discussion', rank: 'C', skill: 'writing', exam: 'TOEFL', mode: 'ai', title: 'Academic Discussion', desc: 'Contribute your own view. Target: 10 minutes, 100+ words.', mins: 10, minWords: 100 },
+  { id: 'toefl-interview', rank: 'D', skill: 'speaking', exam: 'TOEFL', mode: 'ai', title: 'Take an interview', desc: '4 interview questions, about 45 seconds each.', mins: 5, perQ: 45 },
+  { id: 'toefl-email', rank: 'D', skill: 'writing', exam: 'TOEFL', mode: 'ai', title: 'Write an email', desc: 'Cover all 3 points. Target: 7 minutes, 80-150 words.', mins: 7, minWords: 80 },
+  { id: 'ielts-p2', rank: 'C', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Speaking Part 2 (cue card)', desc: '1 minute to prepare, then speak for up to 2 minutes.', mins: 4, prep: 60, perQ: 120 },
+  { id: 'ielts-gt1', rank: 'C', skill: 'writing', exam: 'IELTS GT', mode: 'ai', title: 'Writing Task 1 (letter)', desc: 'Write at least 150 words in 20 minutes.', mins: 20, minWords: 150 },
+  { id: 'toefl-discussion', rank: 'C', skill: 'writing', exam: 'TOEFL', mode: 'ai', title: 'Academic discussion', desc: 'Contribute your own view. Target: 10 minutes, 100+ words.', mins: 10, minWords: 100 },
   { id: 'ielts-p3', rank: 'B', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Speaking Part 3', desc: '4 abstract questions. Give reasons, examples and a conclusion.', mins: 6, perQ: 60 },
-  { id: 'ielts-task2', rank: 'B', skill: 'writing', exam: 'IELTS', mode: 'ai', title: 'Writing Task 2 (Essay)', desc: 'Write at least 250 words in 40 minutes.', mins: 40, minWords: 250 },
-  { id: 'ops-interview', rank: 'A', skill: 'speaking', exam: 'Job Interview', mode: 'ai', title: 'Operations Interview (STAR)', desc: '3 interview questions. Use Situation, Task, Action, Result. Up to 2 minutes each.', mins: 7, perQ: 120 },
-  { id: 'ielts-ac1', rank: 'A', skill: 'writing', exam: 'IELTS Academic', mode: 'ai', title: 'Academic Task 1 (Data)', desc: 'Summarise the table in at least 150 words in 20 minutes.', mins: 20, minWords: 150 },
-  { id: 'mock-speaking', rank: 'S', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Full Speaking Mock', desc: 'Part 1 (3 Qs) + Part 2 (cue card) + Part 3 (3 Qs) in one run.', mins: 14 },
-  { id: 'mock-writing', rank: 'S', skill: 'writing', exam: 'IELTS', mode: 'ai', title: 'Exam-Mode Essay', desc: 'Task 2 under strict exam rules: 40 minutes, no pausing, 250+ words.', mins: 40, minWords: 250, strict: true },
+  { id: 'ielts-task2', rank: 'B', skill: 'writing', exam: 'IELTS', mode: 'ai', title: 'Writing Task 2 (essay)', desc: 'Write at least 250 words in 40 minutes.', mins: 40, minWords: 250 },
+  { id: 'ops-interview', rank: 'A', skill: 'speaking', exam: 'Job Interview', mode: 'ai', title: 'Operations interview (STAR)', desc: '3 interview questions. Use Situation, Task, Action, Result. Up to 2 minutes each.', mins: 7, perQ: 120 },
+  { id: 'ielts-ac1', rank: 'A', skill: 'writing', exam: 'IELTS Academic', mode: 'ai', title: 'Academic Task 1 (data)', desc: 'Summarise the table in at least 150 words in 20 minutes.', mins: 20, minWords: 150 },
+  { id: 'mock-speaking', rank: 'S', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Full speaking mock', desc: 'Part 1 (3 Qs) + Part 2 (cue card) + Part 3 (3 Qs) in one run.', mins: 14 },
+  { id: 'mock-writing', rank: 'S', skill: 'writing', exam: 'IELTS', mode: 'ai', title: 'Exam-mode essay', desc: 'Task 2 under strict exam rules: 40 minutes, no pausing, 250+ words.', mins: 40, minWords: 250, strict: true },
 ];
 
 const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 const sample = (arr, n) => [...arr].sort(() => Math.random() - 0.5).slice(0, n);
 
-// Build a concrete task (questions or writing prompt) for a gate.
+// Build a concrete task (questions or writing prompt).
 export function makeTask(gate) {
   switch (gate.id) {
     case 'toefl-repeat': {
@@ -373,18 +373,18 @@ export function makeTask(gate) {
 
 // ---------- Daily Quest blocks per chapter (minutes, total 90) ----------
 export const CHAPTERS = [
-  { n: 1, name: 'Fix the Habits', start: '2026-11-17', end: '2026-12-14', focus: 'Kill your top debuffs and speak without long pauses.', blocks: { debuff: 15, speaking: 30, writing: 20, listening: 15, phrases: 10 } },
-  { n: 2, name: 'Expand the Range', start: '2026-12-15', end: '2027-01-25', focus: 'Opinions, explanations, emails and complex sentences.', blocks: { debuff: 10, speaking: 30, writing: 25, listening: 15, phrases: 10 } },
-  { n: 3, name: 'Professional & Exam Performance', start: '2027-01-26', end: '2027-03-01', focus: 'Part 2/3, Task 2 essays and STAR interview answers.', blocks: { debuff: 10, speaking: 30, writing: 30, listening: 10, phrases: 10 } },
-  { n: 4, name: 'Final Simulations', start: '2027-03-02', end: '2027-03-31', focus: 'Full mocks under exam conditions.', blocks: { debuff: 5, speaking: 35, writing: 35, listening: 10, phrases: 5 } },
+  { n: 1, name: 'Fix the habits', start: '2026-11-17', end: '2026-12-14', focus: 'Kill your top debuffs and speak without long pauses.', blocks: { debuff: 15, speaking: 30, writing: 20, listening: 15, phrases: 10 } },
+  { n: 2, name: 'Expand your range', start: '2026-12-15', end: '2027-01-25', focus: 'Opinions, explanations, emails and complex sentences.', blocks: { debuff: 10, speaking: 30, writing: 25, listening: 15, phrases: 10 } },
+  { n: 3, name: 'Professional and exam performance', start: '2027-01-26', end: '2027-03-01', focus: 'Part 2/3, Task 2 essays and STAR interview answers.', blocks: { debuff: 10, speaking: 30, writing: 30, listening: 10, phrases: 10 } },
+  { n: 4, name: 'Full simulations', start: '2027-03-02', end: '2027-03-31', focus: 'Full mocks under exam conditions.', blocks: { debuff: 5, speaking: 35, writing: 35, listening: 10, phrases: 5 } },
 ];
 
 export const BLOCK_INFO = {
-  debuff: { label: 'Purge Debuffs', where: 'codex', note: 'Drill your top error types in the Codex.' },
-  speaking: { label: 'Speaking Gates', where: 'gates', note: 'Clear speaking gates. Record, get feedback, shadow the upgraded answer.' },
-  writing: { label: 'Writing Gates', where: 'gates', note: 'Clear writing gates. Then rewrite one corrected sentence from memory.' },
+  debuff: { label: 'Error drill', where: 'review', note: 'Short quiz on your most frequent error patterns.' },
+  speaking: { label: 'Speaking practice', where: 'practice', note: 'Record an answer, read the feedback, then shadow the improved version.' },
+  writing: { label: 'Writing practice', where: 'practice', note: 'Write, read the feedback, then rewrite one corrected sentence from memory.' },
   listening: { label: 'Listening & Shadowing', where: 'timer', note: 'Listen to an English source, pause, and repeat sentences aloud.' },
-  phrases: { label: 'Phrase Review', where: 'codex', note: 'Review due phrases and say each one in your own sentence.' },
+  phrases: { label: 'Phrase Review', where: 'review', note: 'Review due phrases and say each one in your own sentence.' },
 };
 
 export const LISTENING_SOURCES = [
@@ -394,23 +394,36 @@ export const LISTENING_SOURCES = [
   { name: 'YouGlish (hear words in context)', url: 'https://youglish.com/' },
 ];
 
-// ---------- Side quests (official / tested platforms) ----------
+// ---------- Partner platforms (official / tested) ----------
 export const SIDE_QUESTS = [
-  { key: 'speak-improve', name: 'Speak & Improve (Cambridge)', url: 'https://speakandimprove.com/', every: 7, why: 'Pronunciation + CEFR speaking estimate. The app cannot judge pronunciation; this can.' },
-  { key: 'write-improve', name: 'Write & Improve (Cambridge)', url: 'https://writeandimprove.com/', every: 7, why: 'A second, independent writing score to cross-check the System.' },
+  { key: 'speak-improve', name: 'Speak & Improve (Cambridge)', url: 'https://speakandimprove.com/', every: 7, why: 'Pronunciation and a CEFR speaking estimate — the one thing this app cannot judge.' },
+  { key: 'write-improve', name: 'Write & Improve (Cambridge)', url: 'https://writeandimprove.com/', every: 7, why: 'A second, independent writing score to cross-check the AI feedback here.' },
   { key: 'ielts-ready', name: 'IELTS Ready mock (British Council)', url: 'https://takeielts.britishcouncil.org/take-ielts/prepare', every: 30, why: 'Official IELTS-format mock with estimated band.' },
   { key: 'human-talk', name: 'Talk with a human (HelloTalk / Tandem / friend)', url: 'https://www.hellotalk.com/', every: 7, why: 'Real conversation pressure. Start by Chapter 2.' },
   { key: 'efset-quick', name: 'EF SET 50-min check (optional)', url: 'https://www.efset.org/', every: 14, why: 'Mid-month reading/listening check.' },
 ];
 
-// ---------- Raids (real tests: the ONLY source of stat changes) ----------
+// ---------- Checkpoints (real tests: the ONLY source of skill scores) ----------
 export const RAIDS = [
-  { date: '2026-12-17', name: 'Raid I' },
-  { date: '2027-01-17', name: 'Raid II' },
-  { date: '2027-02-17', name: 'Raid III' },
-  { date: '2027-03-17', name: 'Raid IV' },
-  { date: '2027-03-31', name: 'Final Raid' },
+  { date: '2026-12-17', name: 'Checkpoint 1' },
+  { date: '2027-01-17', name: 'Checkpoint 2' },
+  { date: '2027-02-17', name: 'Checkpoint 3' },
+  { date: '2027-03-17', name: 'Checkpoint 4' },
+  { date: '2027-03-31', name: 'Final assessment' },
 ];
 
 export const TARGETS = { reading: 63, listening: 63, writing: 60, speaking: 58 };
 export const END_DATE = '2027-03-31';
+
+export const LEVELS = { E: 'Foundation', D: 'Core', C: 'Intermediate', B: 'Upper-intermediate', A: 'Advanced', S: 'Exam simulation' };
+
+// Suggested task per phase for Today's plan (rotates daily)
+export const PLAN_TASKS = {
+  1: { speaking: ['toefl-repeat', 'ielts-p1', 'toefl-interview'], writing: ['toefl-build', 'toefl-email'] },
+  2: { speaking: ['ielts-p1', 'toefl-interview', 'ielts-p2'], writing: ['toefl-email', 'ielts-gt1', 'toefl-discussion'] },
+  3: { speaking: ['ielts-p2', 'ielts-p3', 'ops-interview'], writing: ['ielts-gt1', 'toefl-discussion', 'ielts-task2', 'ielts-ac1'] },
+  4: { speaking: ['mock-speaking', 'ielts-p3', 'ops-interview'], writing: ['mock-writing', 'ielts-task2', 'ielts-gt1'] },
+};
+
+// Baseline used for "gap closed" (EF SET, 17 Nov 2026)
+export const BASELINE = { reading: 63, listening: 67, writing: 50, speaking: 45 };

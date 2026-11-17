@@ -1,6 +1,6 @@
-# English Hunter System
+# English Command
 
-A gamified English training app (IELTS + TOEFL, speaking & writing first) that runs entirely on your own Cloudflare account. No dependency on Claude to run.
+A calm, data-driven English training app (IELTS + TOEFL, speaking & writing first) that runs entirely on your own Cloudflare account. No dependency on Claude to run.
 
 ## Stack
 - **Cloudflare Workers** — serves the app (`public/`) and the API (`src/worker.js`)
@@ -9,9 +9,8 @@ A gamified English training app (IELTS + TOEFL, speaking & writing first) that r
 - **Browser Web Speech API** — speech-to-text and text-to-speech, on device
 
 ## Core rules
-- **XP measures effort. Ability stats change ONLY from real tests (Raids = EF SET).**
-- Daily Quest: 90 min target, 20 min minimum protects the streak.
-- Level curve: cumulative XP for level L = `50 × L × (L − 1)`. Rank: E (1) · D (10) · C (20) · B (30) · A (45) · S (60).
+- **Skill scores change ONLY from real tests (checkpoints = EF SET).** Home shows readiness as the share of the baseline-to-target gap closed.
+- Today: 90 min plan, 20 min keeps the streak.
 - v1 features are frozen. New ideas go to the v2 list below.
 
 ## Files
