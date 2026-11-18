@@ -1,7 +1,7 @@
-// English Command — client app (vanilla JS, no build step). Desktop-first, works on phone.
+// English Pathway — client app (vanilla JS, no build step). Desktop and tablet first, works on phone.
 import {
   CATEGORIES, DRILLS, GATES, makeTask, CHAPTERS, PHASE_SPLIT, BLOCK_INFO, BLOCK_SHARE, LISTENING_SOURCES,
-  SIDE_QUESTS, RAIDS, LEVELS as TASK_LEVELS, PLAN_TASKS, FOCUS,
+  SIDE_QUESTS, RAIDS, LEVELS as TASK_LEVELS, PLAN_TASKS, FOCUS, DAILY_PHRASES,
 } from './content.js';
 import { UNITS, LESSONS, LESSON, CATEGORY_LESSON } from './grammar.js';
 import {
@@ -43,7 +43,11 @@ function toast(msg, kind = '') {
 }
 
 // ================= API (with retries for flaky mobile networks) =================
-let TOKEN = store.get('eh_token');
+// One saved session per account, so both people can use the same tablet without retyping.
+let TOKENS = store.get('ep_tokens', {});
+let TOKEN = null;
+const LEGACY = store.get('eh_token');
+const saveTokens = () => store.set('ep_tokens', TOKENS);
 const NET_MSG = 'Connection dropped. Check your internet and try again — nothing was lost.';
 const isNetErr = (e) => e instanceof TypeError || /load failed|failed to fetch|networkerror|network connection/i.test(String(e?.message));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -67,7 +71,7 @@ async function api(path, opts = {}) {
   }
   let data = {};
   try { data = await res.json(); } catch { /* ignore */ }
-  if (res.status === 401 && !path.startsWith('/api/auth/')) { TOKEN = null; store.del('eh_token'); boot(); throw new Error('Your session expired. Sign in again.'); }
+  if (res.status === 401 && !path.startsWith('/api/auth/')) { for (const k of Object.keys(TOKENS)) if (TOKENS[k] === TOKEN) delete TOKENS[k]; saveTokens(); TOKEN = null; S = null; boot(); throw new Error('Your session expired. Sign in again.'); }
   if (!res.ok) throw new Error(data.error || `Request failed (${res.status})`);
   return data;
 }
@@ -93,7 +97,7 @@ async function flushOutbox() {
 // ================= profile, phases, derived state =================
 const GATE = Object.fromEntries(GATES.map((g) => [g.id, g]));
 let S = null;
-let VIEW = store.get('ec_view', 'home');
+let VIEW = 'home';
 let SUB = {};
 let RUN = null;
 
@@ -183,11 +187,11 @@ function partnerView(p) {
   const monday = addDays(t, -weekday(t));
   const weekMin = p.days.filter((x) => x.date >= monday).reduce((a, x) => a + x.minutes, 0);
   const prof = profileFor(t, rows);
-  const learned = (p.mastery[2] || 0) + (p.mastery[3] || 0) + (p.mastery[4] || 0);
+  const levels = Object.fromEntries((p.mastery || []).map((m) => [m.lesson_id, m.level]));
+  const learned = Object.values(levels).filter((v) => v >= 2).length;
   const last = p.days.length ? p.days[p.days.length - 1].date : null;
-  return { ...p, streak: streakOf(dayMap, rows, t), weekMin, weekTarget: prof.daily * (7 - (prof.restDays || []).length), todayMin: dayMap[t] || 0, daily: prof.daily, learned, last };
+  return { ...p, dayMap, rows, prof, levels, streak: streakOf(dayMap, rows, t), weekMin, weekTarget: prof.daily * (7 - (prof.restDays || []).length), todayMin: dayMap[t] || 0, daily: prof.daily, minimum: prof.minimum, learned, last };
 }
-
 function milestones(D) {
   const n = S.attempts.length;
   const ov = D.latest && !D.estimateOnly ? (D.latest.reading + D.latest.listening + D.latest.writing + D.latest.speaking) / 4 : 0;
@@ -321,56 +325,152 @@ const ICON = {
   practice: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
   review: '<path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 21V5M9 8h6"/>',
   progress: '<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  together: '<circle cx="8.5" cy="8" r="3.2"/><circle cx="16.5" cy="9.5" r="2.6"/><path d="M2.5 19c.6-3.3 3-5 6-5s5.4 1.7 6 5M14.5 14.6c2.9-.4 5.6 1.1 6.5 4.4"/>',
+  more: '<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  grammar: '<path d="M4 19V6a2 2 0 0 1 2-2h12v13H6a2 2 0 0 0-2 2zm0 0a2 2 0 0 0 2 2h12"/><path d="M9 8h5M9 11h3"/>',
+  debuff: '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><circle cx="12" cy="12" r="0.8"/>',
+  speaking: '<rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/>',
+  writing: '<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13.5 6.5l4 4"/>',
+  listening: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4" height="6" rx="1.5"/><rect x="17" y="14" width="4" height="6" rx="1.5"/>',
+  phrases: '<path d="M5 5h14v10H9l-4 4z"/><path d="M9 9h6"/>',
+  check: '<path d="M5 12.5l4.5 4.5L19 7.5"/>',
+  play: '<path d="M8 5.5v13l10-6.5z"/>',
+  heart: '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+  flag: '<path d="M6 21V4M6 4h11l-2 4 2 4H6"/>',
+  lock: '<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+  arrow: '<path d="M5 12h14M13 6l6 6-6 6"/>',
   settings: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/>',
 };
 const icon = (k) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k]}</svg>`;
-const NAV = [['home', 'Home'], ['today', 'Today'], ['learn', 'Learn'], ['practice', 'Practice'], ['review', 'Review'], ['progress', 'Progress']];
+const NAV = [['home', 'Home'], ['today', 'Today'], ['learn', 'Learn'], ['practice', 'Practice'], ['review', 'Review'], ['together', 'Together'], ['progress', 'Progress']];
+const PHONE_NAV = [['home', 'Home'], ['today', 'Today'], ['learn', 'Learn'], ['practice', 'Practice'], ['together', 'Together'], ['more', 'More']];
+// Skill colours: one soft tint per skill so the plan is easy to scan
+const BLOCK_SKILL = { grammar: 'grammar', debuff: 'debuff', speaking: 'speaking', writing: 'writing', listening: 'listening', phrases: 'phrases', reading: 'reading' };
+const kicon = (k) => `<span class="kicon k-${BLOCK_SKILL[k] || 'grammar'}">${icon(ICON[k] ? k : 'grammar')}</span>`;
+function ring(pct, size = 64, stroke = 6, inner = '', cls = '') {
+  const r = (size - stroke) / 2, c = 2 * Math.PI * r, v = Math.max(0, Math.min(1, pct));
+  return `<svg class="ring ${cls}" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" aria-hidden="true"><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" class="ring-bg"/><circle cx="${size / 2}" cy="${size / 2}" r="${r}" fill="none" stroke-width="${stroke}" stroke-linecap="round" class="ring-fg" stroke-dasharray="${(c * v).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 ${size / 2} ${size / 2})"/>${inner ? `<text x="50%" y="50%" dy="0.35em" text-anchor="middle" class="ring-txt">${inner}</text>` : ''}</svg>`;
+}
+const wibDate = (iso) => new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Jakarta' }).format(new Date(iso));
+const phraseOfDay = (d = today()) => DAILY_PHRASES[Math.abs(daysBetween('2026-01-01', d)) % DAILY_PHRASES.length];
 
 // ================= boot / auth =================
 async function boot() {
   document.body.classList.remove('authed');
-  if (!TOKEN) {
-    let users = [];
-    try { users = (await api('/api/auth/status')).users; } catch (e) { $('#app').innerHTML = `<div class="auth"><div class="card"><h2>Can't connect</h2><p class="muted">${esc(e.message)}</p><button class="btn" onclick="location.reload()">Try again</button></div></div>`; return; }
-    return renderAuth(users);
-  }
-  try { await refresh(); } catch (e) { if (TOKEN) $('#app').innerHTML = `<div class="auth"><div class="card"><h2>Something went wrong</h2><p class="muted">${esc(e.message)}</p><button class="btn" onclick="location.reload()">Try again</button></div></div>`; return; }
-  document.body.classList.add('authed');
-  renderShell();
-  render();
+  document.body.classList.add('on-cover');
+  // Use any saved session to unlock the streaks on the cover (and to adopt an old single-account session).
+  TOKEN = Object.values(TOKENS)[0] || LEGACY || null;
+  let status;
+  try { status = await api('/api/auth/status?date=' + today()); }
+  catch (e) { $('#app').innerHTML = `<div class="auth"><div class="card"><h2>Can't connect</h2><p class="muted">${esc(e.message)}</p><p class="small muted">On XL mobile data, turn on Private DNS (one.one.one.one) or use WiFi.</p><button class="btn" onclick="location.reload()">Try again</button></div></div>`; return; }
+  if (LEGACY && status.signedInAs && !TOKENS[status.signedInAs]) { TOKENS[status.signedInAs] = LEGACY; saveTokens(); }
+  if (LEGACY) store.del('eh_token');
+  if (!status.signedInAs) { TOKENS = {}; saveTokens(); }
+  TOKEN = null;
+  renderCover(status);
 }
-
-function renderAuth(users, chosen = store.get('ec_user')) {
-  const u = users.find((x) => x.id === chosen);
-  $('#app').innerHTML = `<div class="auth">
-    <div class="page-head"><span class="label"><span class="dot"></span>${u ? (u.configured ? 'Welcome back' : 'Set up your account') : 'Who is studying?'}</span><h1>English<br><span class="muted">Command</span></h1></div>
-    ${!u ? `<div class="auth-users">${users.map((x) => `<button class="card user-card" data-user="${x.id}"><span class="avatar">${esc(x.name[0])}</span><span><b>${esc(x.name)}</b><span class="xs muted">${x.configured ? 'Sign in' : 'Not set up yet'}</span></span></button>`).join('')}</div>`
-    : `<div class="card">
-      <div class="row between mb"><span class="row"><span class="avatar">${esc(u.name[0])}</span><b>${esc(u.name)}</b></span><button class="btn sm ghost" id="a-switch">Switch</button></div>
-      ${u.configured ? '' : `<p class="small muted">Arief gives you a setup code from his Settings page. Enter it, then create your own passphrase.</p><label>Setup code</label><input id="a-code" maxlength="8" autocapitalize="characters" placeholder="8 letters or numbers" />`}
-      <label>Passphrase</label><input id="a-pass" type="password" autocomplete="${u.configured ? 'current-password' : 'new-password'}" placeholder="At least 8 characters" />
-      ${u.configured ? '' : '<label>Confirm passphrase</label><input id="a-pass2" type="password" autocomplete="new-password" />'}
-      <button id="a-go" class="btn full mt">${u.configured ? 'Sign in' : 'Create my account'}</button>
-    </div>`}
+function coverStats(u) {
+  if (!u.days || !u.settings?.length) return null;
+  const t = today();
+  const dayMap = Object.fromEntries(u.days.map((d) => [d.date, d.minutes]));
+  const prof = profileFor(t, u.settings);
+  return { dayMap, prof, todayMin: dayMap[t] || 0, streak: streakOf(dayMap, u.settings, t) };
+}
+function renderCover(status, chosen = null, msg = '') {
+  const t = today(); const users = status.users;
+  const ph = phraseOfDay(t);
+  const next = RAIDS.find((r) => r.date >= t);
+  const stats = Object.fromEntries(users.map((u) => [u.id, coverStats(u)]));
+  const both = users.every((u) => stats[u.id]);
+  const monday = addDays(t, -weekday(t));
+  const together = both ? DAY_NAMES.map((n, i) => {
+    const d = addDays(monday, i);
+    const met = users.filter((u) => (stats[u.id].dayMap[d] || 0) >= profileFor(d, u.settings).minimum).length;
+    return { n, d, met };
+  }) : null;
+  const togetherDays = together ? together.filter((x) => x.met === users.length).length : 0;
+  $('#app').innerHTML = `<div class="cover">
+    <section class="cover-intro">
+      <div class="brand"><span class="brand-mark"><i></i></span>English Pathway</div>
+      <h1 class="cover-title">${greeting()}.<br><span class="muted">Who's studying today?</span></h1>
+      <p class="cover-sub">${fmtLong(t)}${next ? ` · ${daysBetween(t, next.date)} days to ${esc(next.name)}` : ''}</p>
+    </section>
+    <section class="cover-extra">
+      <div class="card ink phrase-card">
+        <span class="label">Phrase of the day</span>
+        <div class="phrase-big">${esc(ph.p)}</div>
+        <p class="small muted" style="margin:0 0 14px">${esc(ph.tip)}</p>
+        <button class="btn on-ink sm" id="cv-say">${icon('play')}Listen</button>
+      </div>
+      <div class="cover-feats">
+        <div>${kicon('grammar')}<b>${LESSONS.length} grammar lessons</b><span>Short rules, quick checks, spaced reviews</span></div>
+        <div>${kicon('speaking')}<b>Speaking and writing</b><span>IELTS, TOEFL and interview tasks with AI feedback</span></div>
+        <div>${kicon('phrases')}<b>Your own mistakes</b><span>Every error becomes a drill until it's gone</span></div>
+      </div>
+    </section>
+    <section class="cover-side">
+      <span class="label">Choose your account</span>
+      <div class="cover-users">${users.map((u) => {
+        const st = stats[u.id]; const open = chosen === u.id;
+        const saved = !!TOKENS[u.id];
+        const sub = !u.configured ? (u.id === 'arief' ? 'Set up your passphrase' : 'Arief sets the first passphrase in his Settings')
+          : st ? `${st.streak}-day streak · ${Math.round(st.todayMin)} of ${st.prof.daily} min today` : saved ? 'Signed in on this device' : 'Sign in';
+        return `<div class="user-tile ${open ? 'open' : ''} ${!u.configured && u.id !== 'arief' ? 'waiting' : ''}">
+          <button class="user-head" data-user="${u.id}">
+            ${st ? ring(st.todayMin / Math.max(1, st.prof.daily), 58, 6, esc(u.name[0]), 'ring-' + u.id) : `<span class="avatar lg">${esc(u.name[0])}</span>`}
+            <span class="user-meta"><b>${esc(u.name)}</b><span class="small muted">${sub}</span></span>
+            <span class="go-arrow">${icon(saved ? 'arrow' : u.configured ? 'lock' : 'arrow')}</span>
+          </button>
+          ${open ? `<div class="user-pass">
+            ${msg ? `<p class="small down" style="margin:0 0 8px">${esc(msg)}</p>` : ''}
+            <label for="a-pass">${u.configured ? 'Passphrase' : 'Create a passphrase (8+ characters)'}</label>
+            <input id="a-pass" type="password" autocomplete="${u.configured ? 'current-password' : 'new-password'}" />
+            ${u.configured ? '' : '<label for="a-pass2">Confirm passphrase</label><input id="a-pass2" type="password" autocomplete="new-password" />'}
+            <button id="a-go" class="btn full mt">${u.configured ? `Continue as ${esc(u.name)}` : 'Create and continue'}</button>
+            <p class="xs muted" style="margin:8px 0 0">You stay signed in on this device until you sign out.</p>
+          </div>` : ''}
+        </div>`;
+      }).join('')}</div>
+      ${together ? `<div class="card together-strip">
+        <div class="row between"><span class="label">This week together</span><span class="small"><b class="w5">${togetherDays}</b> of 7 days both studied</span></div>
+        <div class="tg-days">${together.map((x) => `<span class="m${x.met} ${x.d === t ? 'today' : ''} ${x.d > t ? 'future' : ''}" title="${fmtDate(x.d)}">${x.n[0]}</span>`).join('')}</div>
+        <div class="legend"><span><i class="lg2"></i>Both</span><span><i class="lg1"></i>One of you</span><span><i class="lg0"></i>Not yet</span></div>
+      </div>` : `<p class="xs muted">Sign in once on this device to see both streaks here.</p>`}
+    </section>
   </div>`;
-  $$('[data-user]').forEach((b) => (b.onclick = () => { store.set('ec_user', b.dataset.user); renderAuth(users, b.dataset.user); }));
-  if (!u) return;
-  $('#a-switch').onclick = () => { store.del('ec_user'); renderAuth(users, null); };
+  $('#cv-say').onclick = () => speak(ph.p.replace(/…/g, ''));
+  $$('[data-user]').forEach((b) => (b.onclick = () => enterAs(status, b.dataset.user)));
+  if (!chosen) return;
+  const u = users.find((x) => x.id === chosen);
+  $('#a-pass')?.focus();
   const goAuth = async () => {
     const pass = $('#a-pass').value;
     try {
+      let r;
       if (!u.configured) {
         if (pass !== $('#a-pass2').value) return toast('Passphrases don\'t match.', 'err');
-        TOKEN = (await api('/api/auth/setup', { body: { user: u.id, passphrase: pass, code: $('#a-code')?.value || '' } })).token;
-      } else TOKEN = (await api('/api/auth/login', { body: { user: u.id, passphrase: pass } })).token;
-      store.set('eh_token', TOKEN); VIEW = 'home'; RUN = null; store.set('ec_view', 'home');
-      boot();
+        r = await api('/api/auth/setup', { body: { user: u.id, passphrase: pass } });
+      } else r = await api('/api/auth/login', { body: { user: u.id, passphrase: pass } });
+      TOKENS[u.id] = r.token; saveTokens();
+      enterAs(status, u.id);
     } catch (e) { toast(esc(e.message), 'err'); }
   };
   $('#a-go').onclick = goAuth;
   $('#a-pass').onkeydown = (e) => { if (e.key === 'Enter' && u.configured) goAuth(); };
 }
-
+async function enterAs(status, id) {
+  const u = status.users.find((x) => x.id === id);
+  if (!u) return;
+  if (!u.configured && u.id !== 'arief') return toast(`${esc(u.name)}'s account isn't ready yet. Arief sets the first passphrase in Settings › Study partner.`, 'err');
+  if (!TOKENS[id]) return renderCover(status, id);
+  TOKEN = TOKENS[id];
+  try { S = null; PREV = null; await refresh(); }
+  catch (e) { if (!TOKENS[id]) return renderCover(status, id, 'Please sign in again.'); TOKEN = null; return toast(esc(e.message), 'err'); }
+  VIEW = 'home'; RUN = null; SUB = {};
+  document.body.classList.remove('on-cover');
+  document.body.classList.add('authed');
+  renderShell(); render(); window.scrollTo(0, 0);
+}
 let PREV = null;
 async function refresh() {
   await flushOutbox();
@@ -387,25 +487,30 @@ async function refresh() {
 
 // ================= shell (sidebar + main + right rail) =================
 function renderShell() {
+  const unread = (S.notes || []).filter((n) => n.to_user === S.user && !n.read_at).length;
+  const badge = (k) => (k === 'together' && unread ? `<span class="badge">${unread}</span>` : '');
   $('#side').innerHTML = `
-    <div class="brand"><span class="brand-mark"><i></i></span>English Command</div>
-    <nav class="side-nav">${NAV.map(([k, l]) => `<button data-view="${k}">${icon(k)}<span>${l}</span></button>`).join('')}</nav>
+    <div class="brand"><span class="brand-mark"><i></i></span>English Pathway</div>
+    <nav class="side-nav">${NAV.map(([k, l]) => `<button data-view="${k}">${icon(k)}<span>${l}</span>${badge(k)}</button>`).join('')}</nav>
     <div class="side-foot">
       <button data-view="settings" class="side-user"><span class="avatar">${esc(S.name[0] || '?')}</span><span><b>${esc(S.name)}</b><span class="xs muted">Settings</span></span></button>
+      <button class="side-switch" id="sw-acc">Switch account</button>
     </div>`;
-  $('#topbar').innerHTML = `<div class="brand"><span class="brand-mark"><i></i></span>English Command</div><button class="icon-btn" data-view="settings" aria-label="Settings"><span class="avatar sm">${esc(S.name[0] || '?')}</span></button>`;
-  $('#nav').innerHTML = NAV.map(([k, l]) => `<button data-view="${k}">${icon(k)}${l}</button>`).join('');
+  $('#topbar').innerHTML = `<div class="brand"><span class="brand-mark"><i></i></span>English Pathway</div><button class="icon-btn" data-view="settings" aria-label="Settings"><span class="avatar sm">${esc(S.name[0] || '?')}</span></button>`;
+  $('#nav').innerHTML = PHONE_NAV.map(([k, l]) => `<button data-view="${k}">${icon(k)}${l}${badge(k)}</button>`).join('');
   $$('[data-view]').forEach((b) => (b.onclick = () => { if (!leaveOk()) return; RUN = null; if ('speechSynthesis' in window) speechSynthesis.cancel(); go(b.dataset.view); }));
+  $('#sw-acc').onclick = switchAccount;
 }
+function switchAccount() { if (!leaveOk()) return; RUN = null; S = null; TOKEN = null; boot(); }
 const leaveOk = () => !RUN || RUN.done || confirm('Leave this task? Your answer here won\'t be saved.');
-function go(view) { VIEW = view; if (view !== 'settings') store.set('ec_view', view); render(); window.scrollTo(0, 0); }
+function go(view) { VIEW = view; keyHandler = null; render(); window.scrollTo(0, 0); }
 function render() {
   if (!S) return;
-  $$('[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === (RUN?.view || VIEW)));
+  $$('[data-view]').forEach((b) => b.classList.toggle('active', b.dataset.view === (RUN?.view || VIEW) || (b.dataset.view === 'more' && ['review', 'progress', 'settings'].includes(RUN?.view || VIEW))));
   const D = derive();
   renderRail(D);
   if (RUN) return RUN.render();
-  const views = { home: vHome, today: vToday, learn: vLearn, practice: vPractice, review: vReview, progress: vProgress, settings: vSettings };
+  const views = { home: vHome, today: vToday, learn: vLearn, practice: vPractice, review: vReview, together: vTogether, progress: vProgress, settings: vSettings, more: vMore };
   (views[VIEW] || vHome)(D);
   bindCommon();
 }
@@ -421,37 +526,44 @@ function nextStepCard(D, compact = false) {
   const steps = planSteps(D); const next = steps.find((s) => !s.done);
   const doneN = steps.filter((s) => s.done).length;
   return `<div class="card ink next-card">
-    <div class="card-head"><span class="label">Next step</span><span class="pill">${doneN} / ${steps.length}</span></div>
-    ${next ? `<h3 class="next-title">${esc(next.title)}</h3><p class="small muted" style="margin:6px 0 12px">${esc(next.why)}</p>
-      <button class="btn on-ink full" data-step="${next.key}">Start · ~${next.mins} min</button>`
-    : '<h3 class="next-title">All steps done for today</h3><p class="small muted">Anything extra is a bonus. Try a full mock in Practice.</p>'}
+    <div class="card-head"><span class="label">Next step</span><span class="pill">${doneN} of ${steps.length} done</span></div>
+    ${next ? `<div class="row" style="align-items:flex-start;gap:12px">${kicon(next.block)}<div style="min-width:0"><h3 class="next-title">${esc(next.title)}</h3><p class="small muted" style="margin:4px 0 0">${esc(next.why)}</p></div></div>
+      <button class="btn on-ink full mt" data-step="${next.key}">Start · about ${next.mins} min</button>`
+    : '<h3 class="next-title">Today is complete</h3><p class="small muted">Anything extra is a bonus. Try a full mock in Practice.</p>'}
     ${compact ? '' : `<div class="bar mt"><i style="width:${Math.min(100, (D.todayMin / D.prof.daily) * 100)}%"></i><span class="mark" style="left:${(D.prof.minimum / D.prof.daily) * 100}%"></span></div>
-    <div class="row between xs muted mt"><span>${Math.round(D.todayMin)} / ${D.prof.daily} min today</span><span>${D.streak}-day streak</span></div>`}
+    <div class="row between xs muted mt"><span>${Math.round(D.todayMin)} of ${D.prof.daily} min today</span><span>${D.streak}-day streak</span></div>`}
   </div>`;
 }
 function partnerCard() {
   const ps = (S.partners || []).filter((p) => p.configured).map(partnerView);
   if (!ps.length) return '';
-  return ps.map((p) => `<div class="card">
-    <div class="card-head"><span class="label">Study partner</span><span class="xs dim">${p.last ? (p.last === today() ? 'active today' : 'last active ' + fmtDate(p.last)) : 'not started'}</span></div>
-    <div class="row"><span class="avatar">${esc(p.name[0])}</span><b>${esc(p.name)}</b></div>
-    <div class="stats mt"><div><div class="v">${p.streak}</div><div class="l">Streak</div></div><div><div class="v">${Math.round(p.todayMin)}<span class="small">/${p.daily}</span></div><div class="l">Today (min)</div></div><div><div class="v">${p.learned}</div><div class="l">Lessons learned</div></div></div>
-    <div class="bar mt"><i style="width:${Math.min(100, (p.weekMin / Math.max(1, p.weekTarget)) * 100)}%"></i></div>
-    <div class="xs muted mt">This week ${hm(p.weekMin)} of ${hm(p.weekTarget)}</div>
+  return ps.map((p) => `<div class="card partner-mini">
+    <div class="card-head"><span class="label">Study partner</span><span class="xs dim">${p.last ? (p.last === today() ? 'active today' : 'last active ' + fmtDate(p.last)) : 'not started yet'}</span></div>
+    <div class="row" style="gap:14px">${ring(p.todayMin / Math.max(1, p.daily), 56, 6, esc(p.name[0]), 'ring-partner')}
+      <div><b class="w5">${esc(p.name)}</b><div class="small muted">${p.streak}-day streak · ${Math.round(p.todayMin)} of ${p.daily} min</div><div class="xs muted">${p.learned} of ${LESSONS.length} lessons learned</div></div></div>
+    <div class="row mt wrap"><button class="btn sm" data-cheer="${p.id}">${icon('heart')}Cheer</button><button class="btn sm ghost" data-go="together">Together</button></div>
   </div>`).join('');
 }
+async function sendCheer(to, text = '', kind = 'cheer', ref = null) {
+  try { await api('/api/notes', { body: { to, kind, text, ref } }); toast(kind === 'share' ? 'Shared with your partner.' : kind === 'cheer' ? 'Cheer sent.' : 'Note sent.', 'good'); await refresh(); render(); }
+  catch (e) { toast(esc(e.message), 'err'); }
+}
 function renderRail(D) {
-  $('#rail').innerHTML = `${nextStepCard(D)}
-    <div class="card"><div class="card-head"><span class="label">This week</span><span class="xs dim">${hm(D.weekMin)} / ${hm(D.weekTarget)}</span></div>
+  const onHome = VIEW === 'home' && !RUN;
+  $('#rail').innerHTML = `${onHome ? '' : nextStepCard(D)}
+    <div class="card"><div class="card-head"><span class="label">This week</span><span class="xs dim">${hm(D.weekMin)} of ${hm(D.weekTarget)}</span></div>
       <div class="bar"><i style="width:${Math.min(100, (D.weekMin / Math.max(1, D.weekTarget)) * 100)}%"></i></div>
       <div class="week-days mt">${DAY_NAMES.map((n, i) => { const d = addDays(D.monday, i); const m = D.dayMap[d] || 0; const p = profileFor(d); const rest = (p.restDays || []).includes(i); return `<span class="${d > D.t ? 'future' : m >= p.daily ? 'full' : m >= p.minimum ? 'ok' : rest ? 'rest' : ''} ${d === D.t ? 'today' : ''}" title="${fmtDate(d)} · ${Math.round(m)} min">${n[0]}</span>`; }).join('')}</div>
+      <div class="row between xs muted mt"><span>${D.streak}-day streak</span><span>best ${D.best}</span></div>
     </div>
-    ${partnerCard()}
-    <div class="card"><div class="row between"><span class="label">AI feedback left today</span><b>${S.ai.left}</b></div><p class="xs muted" style="margin:6px 0 0">Shared pool of ${S.ai.pool} per day, up to ${S.ai.cap} each. Resets 07:00 WIB.</p></div>`;
+    ${onHome || VIEW === 'together' ? '' : partnerCard()}
+    <div class="card"><div class="row between"><span class="label">AI feedback left today</span><b class="w5">${S.ai.left}</b></div><p class="xs muted" style="margin:6px 0 0">Shared pool of ${S.ai.pool} a day, up to ${S.ai.cap} each. Resets at 07:00 WIB.</p></div>`;
   bindRail();
 }
 function bindRail() {
   $$('#rail [data-step]').forEach((b) => (b.onclick = () => { const st = planSteps(derive()).find((x) => x.key === b.dataset.step); if (st && leaveOk()) runStep(st); }));
+  $$('#rail [data-cheer]').forEach((b) => (b.onclick = () => sendCheer(b.dataset.cheer)));
+  $$('#rail [data-go]').forEach((b) => (b.onclick = () => { if (leaveOk()) { RUN = null; go(b.dataset.go); } }));
 }
 const pageHead = (label, title) => `<div class="page-head"><span class="label"><span class="dot"></span>${label}</span><h1>${title}</h1></div>`;
 const greeting = () => { const h = +new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hour12: false, timeZone: 'Asia/Jakarta' }).format(new Date()); return h < 11 ? 'Good morning' : h < 15 ? 'Good afternoon' : 'Good evening'; };
@@ -471,70 +583,93 @@ function heatmap(D, weeks = 8) {
 function critRow(label, v) {
   return `<div class="crit"><span>${label}</span><div class="bar"><i style="width:${v ? (v / 9) * 100 : 0}%"></i></div><b>${v ? v.toFixed(1) : '–'}</b></div>`;
 }
+const STEP_LABEL = (x) => ({ diagnostic: 'Grammar diagnostic', unit: 'Unit test', lesson: 'Grammar lesson', drill: 'Error drill', speak: 'Speaking', write: 'Writing', listen: 'Listening', phrases: 'Phrase review' }[x.key] || (x.key.startsWith('rev-') ? 'Lesson review' : x.title));
+function unitStatus(C, u) {
+  if (u.passed) return 'done';
+  if (u.lessons.some((l) => l.id === C.current?.id)) return 'now';
+  if (u.lessons.some((l) => C.level(l.id) >= 2)) return 'started';
+  return 'later';
+}
+function pathTrack(D) {
+  const C = D.course;
+  const nodes = C.units.map((u, i) => ({ name: u.name, st: unitStatus(C, u), n: i + 1, done: u.done, total: u.lessons.length }));
+  let firstNow = nodes.findIndex((x) => x.st === 'now');
+  if (firstNow < 0) firstNow = nodes.findIndex((x) => x.st !== 'done');
+  return `<div class="path">${nodes.map((x, i) => `<div class="path-node ${x.st} ${i === firstNow ? 'here' : ''}" data-go="learn" title="${esc(x.name)} · ${x.done} of ${x.total} proficient">
+      <span class="dotn">${x.st === 'done' ? icon('check') : x.n}</span><span class="pname">${esc(x.name)}</span><span class="pmeta">${x.done}/${x.total}</span></div>`).join('')}
+    <div class="path-node flag"><span class="dotn">${icon('flag')}</span><span class="pname">Final check</span><span class="pmeta">${fmtDate(D.prof.end)}</span></div></div>`;
+}
+function skillTiles(D) {
+  return `<div class="skill-tiles">${SKILLS.map((k) => {
+    const v = D.latest?.[k]; const tg = D.prof.targets[k];
+    const met = v != null && v >= tg;
+    return `<div class="stile k-${k}"><div class="stile-top">${icon(k === 'reading' ? 'grammar' : k)}<span>${cap(k)}</span></div>
+      <div class="stile-v">${v != null ? `${v}${met ? ' <span class="xs">target met</span>' : ` <span class="arrow">→</span> ${tg}`}` : '–'}</div>
+      <div class="stile-bar"><i style="width:${v != null ? Math.min(100, (v / Math.max(1, tg)) * 100) : 0}%"></i></div></div>`;
+  }).join('')}</div>`;
+}
 function vHome(D) {
   const C = D.course;
-  const daysLeft = Math.max(0, daysBetween(D.t, D.prof.end));
+  const steps = planSteps(D); const next = steps.find((x) => !x.done); const doneN = steps.filter((x) => x.done).length;
+  const partner = (S.partners || []).filter((p) => p.configured).map(partnerView)[0];
+  const unread = (S.notes || []).filter((n) => n.to_user === S.user && !n.read_at);
   $('#app').innerHTML = `
-  ${pageHead(`Phase ${D.phase.n} · ${esc(D.phase.name)} · ${esc(FOCUS[D.prof.focus] || '')}`, `${greeting()}, <span class="muted">${esc(S.name)}</span>`)}
-  <div class="only-narrow">${nextStepCard(D, true)}</div>
+  <div class="hello"><h1>Hi ${esc(S.name)}, ready for today?</h1>
+    <p class="muted">${fmtLong(D.t)} · Phase ${D.phase.n}: ${esc(D.phase.name)} · ${esc(FOCUS[D.prof.focus] || '')}</p></div>
+  ${unread.length ? `<div class="card note-banner"><span>${icon('heart')}</span><div style="flex:1"><b class="w5">${esc(partner?.name || 'Your partner')}</b> sent you ${unread.length === 1 ? (unread[0].kind === 'cheer' ? 'a cheer' : unread[0].kind === 'share' ? 'an answer to look at' : 'a note') : unread.length + ' messages'}${unread[0].text ? `: “${esc(unread[0].text)}”` : '.'}</div><button class="btn sm ghost" data-go="together">Open</button></div>` : ''}
   <div class="grid g-3">
-    <div class="card ink span-2">
-      <div class="card-head"><span class="label">Readiness for your targets</span><span class="pill">${daysLeft} days left</span></div>
-      <div class="row between" style="align-items:flex-end"><div class="big" style="color:var(--sky)">${D.gapPct == null ? '–' : D.gapPct + '%'}</div><div class="small muted" style="text-align:right">${D.gapPct == null ? 'Record your first test<br>in Progress › Checkpoints' : 'of the gap between your first test<br>and your targets is closed'}</div></div>
-      <div class="bar mt"><i style="width:${Math.max(2, D.gapPct || 0)}%"></i></div>
-      <div class="stats mt" style="padding-top:12px;border-top:0.5px solid var(--ink-line)">
-        <div><div class="v">${D.gapPct == null ? '–' : D.gapLeft}</div><div class="l">Points to go</div></div>
-        <div><div class="v">${D.nextCheck ? daysBetween(D.t, D.nextCheck.date) : '–'}<span class="small">d</span></div><div class="l">Next checkpoint</div></div>
-        <div><div class="v">${C.masteryPct}%</div><div class="l">Grammar mastery</div></div>
-      </div>
-      ${D.estimateOnly ? '<p class="xs muted" style="margin:12px 0 0">Your scores are an estimate. Take the EF SET (Progress › Checkpoints) to replace them with real results.</p>' : ''}
+    <div class="card ink continue span-2">
+      <div class="card-head"><span class="label">${next ? 'Continue' : 'Today'}</span><span class="pill">Step ${Math.min(doneN + 1, steps.length)} of ${steps.length}</span></div>
+      ${next ? `<div class="row" style="align-items:flex-start;gap:14px">${kicon(next.block)}<div style="min-width:0"><h2 class="continue-title">${esc(next.title)}</h2><p class="muted" style="margin:6px 0 0">${esc(next.why)}</p></div></div>
+        <div class="row wrap mt"><button class="btn on-ink" data-step="${next.key}">Start · about ${next.mins} min</button><button class="btn ghost-ink" data-go="today">See today's plan</button></div>
+        ${steps.filter((x) => !x.done && x !== next).length ? `<div class="then"><span class="xs muted">Then</span>${steps.filter((x) => !x.done && x !== next).slice(0, 3).map((x) => `<span class="then-item">${kicon(x.block)}${esc(STEP_LABEL(x))}<span class="xs muted">${x.mins} min</span></span>`).join('')}</div>` : ''}`
+      : `<h2 class="continue-title">Today is complete. Well done.</h2><p class="muted">Anything extra is a bonus. A full mock in Practice is a good stretch.</p><button class="btn on-ink mt" data-go="practice">Open Practice</button>`}
+      <div class="cont-foot"><div class="bar"><i style="width:${Math.min(100, (D.todayMin / D.prof.daily) * 100)}%"></i><span class="mark" style="left:${(D.prof.minimum / D.prof.daily) * 100}%"></span></div>
+      <div class="row between xs muted mt"><span>${Math.round(D.todayMin)} of ${D.prof.daily} min · ${D.prof.minimum} min keeps your streak</span><span>${D.streak}-day streak</span></div></div>
     </div>
-    <div class="card">
-      <div class="card-head"><span class="label"><span class="num">01</span>Grammar course</span><span class="xs dim">${C.learned} / ${LESSONS.length} learned</span></div>
-      <div class="mastery-strip">${LESSONS.map((l) => `<i class="lv${C.level(l.id)}" title="${esc(l.title)} · ${MASTERY[C.level(l.id)]}"></i>`).join('')}</div>
-      <p class="small" style="margin:12px 0 4px">${C.behind ? `<span class="down">${C.behind} lesson${C.behind > 1 ? 's' : ''} behind schedule</span>` : C.ahead ? `<span class="up">${C.ahead} lesson${C.ahead > 1 ? 's' : ''} ahead</span>` : '<span class="up">On schedule</span>'}</p>
-      <p class="xs muted" style="margin:0">${C.eta ? `At your current pace you finish the course around ${fmtDate(C.eta)}.` : 'Your finish date appears after your first lesson.'}</p>
-      <button class="btn ghost full mt" data-go="learn">Open course</button>
+    <div class="card today-mini">
+      <div class="row" style="gap:14px">${ring(D.todayMin / D.prof.daily, 72, 7, `${Math.round(D.todayMin)}m`)}<div><b class="w5">Today's plan</b><div class="small muted">${doneN} of ${steps.length} steps · ${D.prof.daily} min target</div></div></div>
+      <div class="mini-steps">${steps.map((x) => `<button class="mini-step ${x.done ? 'done' : ''} ${x === next ? 'next' : ''}" data-step="${x.key}">${x.done ? `<span class="kicon k-done">${icon('check')}</span>` : kicon(x.block)}<span>${esc(STEP_LABEL(x))}</span></button>`).join('')}</div>
     </div>
+  </div>
+  <div class="card">
+    <div class="card-head"><span class="label">Your path · grammar course</span><span class="small ${C.behind ? 'down' : 'up'}">${C.behind ? `${C.behind} lesson${C.behind > 1 ? 's' : ''} behind plan` : C.ahead ? `${C.ahead} ahead of plan` : 'On plan'}</span></div>
+    ${pathTrack(D)}
+    <div class="row between wrap mt"><span class="small muted">${C.current ? `Up next: <b class="w5" style="color:var(--text)">${esc(C.current.title)}</b> · ${C.current.mins} min · plan by ${fmtDate(C.dueOf[C.current.id])}` : 'All lessons are Proficient. Keep reviews going.'}</span>
+      <span class="row">${!C.diagnosed ? '<button class="btn sm" id="h-diag">Take the diagnostic first</button>' : C.current ? `<button class="btn sm" data-lesson="${C.current.id}">Open lesson</button>` : ''}<button class="btn sm ghost" data-go="learn">All lessons</button></span></div>
   </div>
   <div class="grid g-3">
     <div class="card span-2">
-      <div class="card-head"><span class="label"><span class="num">02</span>Skills · ${D.latest ? esc(D.latest.source) + ', ' + fmtDate(D.latest.date) : 'no test yet'}</span><span class="xs dim">line = your target</span></div>
-      <div class="grid g-2 tight">${D.latest ? SKILLS.map((k) => {
-        const v = D.latest[k], dl = D.base ? v - D.base[k] : 0, tg = D.prof.targets[k];
-        return `<div class="skill"><div class="skill-top"><span>${cap(k)} <span class="dim xs">${cefrOf(v)}</span></span><span>${v}${dl ? ` <span class="${dl > 0 ? 'up' : 'down'} xs">${dl > 0 ? '+' : ''}${dl}</span>` : ''} <span class="dim">/ ${tg}</span></span></div>
-        <div class="bar"><i style="width:${v}%"></i><span class="mark" style="left:${tg}%"></span></div></div>`;
-      }).join('') : '<p class="muted">Record a test in Progress.</p>'}</div>
-      <p class="xs dim" style="margin:12px 0 0">These scores change only after a real test. Practice estimates never overwrite them.</p>
+      <div class="card-head"><span class="label">Your skills · ${D.latest ? `${esc(D.latest.source)}, ${fmtDate(D.latest.date)}` : 'no test yet'}</span><span class="xs dim">score → target</span></div>
+      ${skillTiles(D)}
+      <p class="xs muted" style="margin:12px 0 0">${D.estimateOnly ? 'These are estimates. Take the EF SET and record it in Progress to see your real level.' : `These change only after a real test. Next checkpoint: ${D.nextCheck ? fmtDate(D.nextCheck.date) : 'none'}.`}</p>
+    </div>
+    ${partner ? `<div class="card partner-mini">
+      <div class="card-head"><span class="label">Together</span><span class="xs dim">${partner.last === D.t ? 'active today' : partner.last ? 'last active ' + fmtDate(partner.last) : 'not started yet'}</span></div>
+      <div class="row" style="gap:14px">${ring(partner.todayMin / Math.max(1, partner.daily), 56, 6, esc(partner.name[0]), 'ring-partner')}<div><b class="w5">${esc(partner.name)}</b><div class="small muted">${partner.streak}-day streak · ${Math.round(partner.todayMin)} of ${partner.daily} min</div></div></div>
+      <div class="row mt wrap"><button class="btn sm" data-cheer="${partner.id}">${icon('heart')}Send a cheer</button><button class="btn sm ghost" data-go="together">See progress</button></div>
+    </div>` : `<div class="card"><span class="label">Together</span><p class="small muted">Your study partner appears here once their account is ready.</p></div>`}
+  </div>
+  <div class="grid g-2">
+    <div class="card">
+      <div class="card-head"><span class="label">Consistency · last 12 weeks</span><span class="small muted">best streak ${D.best}</span></div>
+      ${heatmap(D, 12)}
     </div>
     <div class="card">
-      <div class="card-head"><span class="label"><span class="num">03</span>Estimated bands</span><span class="xs dim">last 6 AI tasks</span></div>
-      ${['speaking', 'writing'].map((sk) => { const c = D.crit[sk]; return `<div class="mb"><div class="row between small"><b style="font-weight:500">${cap(sk)}</b><span class="mid">${c.band ? (Math.round(c.band * 2) / 2).toFixed(1) : '–'}</span></div>
-        ${critRow(sk === 'speaking' ? 'Fluency' : 'Task', c.task)}${critRow('Coherence', c.coherence)}${critRow('Vocabulary', c.lexical)}${critRow('Grammar', c.grammar)}</div>`; }).join('')}
-      <p class="xs dim" style="margin:0">IELTS-style estimates from AI feedback, not official scores.</p>
+      <div class="card-head"><span class="label">Mistakes to watch · 14 days</span>${D.patterns.length ? '<button class="btn sm ghost" data-go="review">Review</button>' : ''}</div>
+      <div class="list">${D.patterns.slice(0, 3).map((c) => `<div class="li row between"><div><div>${esc(CATEGORIES[c.key]?.name || c.key)}</div>${c.examples[0] ? `<div class="xs"><span class="wrong">${esc(c.examples[0].wrong)}</span> → <span class="right">${esc(c.examples[0].correct)}</span></div>` : ''}</div>${CATEGORY_LESSON[c.key] ? `<button class="btn sm ghost" data-lesson="${CATEGORY_LESSON[c.key]}">Rule</button>` : ''}</div>`).join('') || '<p class="small muted" style="margin:0">No repeated mistakes yet. They appear here after AI feedback finds them.</p>'}</div>
     </div>
-  </div>
-  <div class="grid g-3">
-    <div class="card span-2">
-      <div class="card-head"><span class="label"><span class="num">04</span>Consistency · last 8 weeks</span><span class="small muted">${D.streak}-day streak · best ${D.best}</span></div>
-      ${heatmap(D)}
-    </div>
-    <div class="card">
-      <div class="card-head"><span class="label"><span class="num">05</span>Error patterns · 14 days</span></div>
-      <div class="list">${D.patterns.slice(0, 4).map((c) => `<div class="li row between"><div><div>${esc(CATEGORIES[c.key]?.name || c.key)}</div>${CATEGORY_LESSON[c.key] ? `<a href="#" class="xs" data-lesson="${CATEGORY_LESSON[c.key]}">Read the rule</a>` : ''}</div><span class="count">${c.recent}</span></div>`).join('') || '<p class="muted small" style="margin:0">No recurring errors in the last 14 days.</p>'}</div>
-      ${D.patterns.length ? '<button class="btn ghost full mt" data-go="review">Review and drill</button>' : ''}
-    </div>
-  </div>
-  <div class="only-narrow">${partnerCard()}</div>`;
+  </div>`;
+  $$('[data-cheer]').forEach((b) => (b.onclick = () => sendCheer(b.dataset.cheer)));
+  $('#h-diag') && ($('#h-diag').onclick = startDiagnostic);
 }
-
 // ================= TODAY =================
 let TIMER = store.get('eh_timer');
 function vToday(D) {
   const steps = planSteps(D);
   const nextKey = steps.find((s) => !s.done)?.key;
   $('#app').innerHTML = `
-  ${pageHead(fmtLong(D.t), 'Today\'s <span class="hl">plan</span>')}
+  ${pageHead(fmtLong(D.t), 'Today\'s plan')}
   <div class="grid g-3">
     <div class="span-2">
       <div class="card ink">
@@ -544,9 +679,9 @@ function vToday(D) {
       </div>
       <div class="card"><div class="list">
         ${steps.map((s, i) => `<div class="li step ${s.key === nextKey ? 'is-next' : ''}"><div class="row" style="align-items:flex-start">
-          <span class="check ${s.done ? 'on' : ''}"></span>
+          ${s.done ? `<span class="kicon k-done">${icon('check')}</span>` : kicon(s.block)}
           <div style="flex:1;min-width:0">
-            <div class="row between wrap"><span class="step-title"><span class="dim">${String(i + 1).padStart(2, '0')}</span> ${esc(s.title)}</span><span class="small ${s.done ? 'up' : 'muted'}">${s.block && BLOCK_INFO[s.block] && !['diagnostic', 'unit'].includes(s.key) && !s.key.startsWith('rev-') ? `${Math.round(D.actMin[s.block] || 0)} / ${s.mins} min` : `~${s.mins} min`}</span></div>
+            <div class="row between wrap"><span class="step-title">${esc(s.title)}</span><span class="small ${s.done ? 'up' : 'muted'}">${s.block && BLOCK_INFO[s.block] && !['diagnostic', 'unit'].includes(s.key) && !s.key.startsWith('rev-') ? `${Math.round(D.actMin[s.block] || 0)} / ${s.mins} min` : `~${s.mins} min`}</span></div>
             <div class="xs muted">${esc(s.why)}</div>
             <div class="row wrap mt"><button class="btn sm ${s.key === nextKey ? '' : 'ghost'}" data-step="${s.key}">${s.done ? 'Do more' : 'Start'}</button>${s.key === 'speak' || s.key === 'write' ? `<button class="btn sm ghost" data-go="practice" data-sub="${s.key === 'speak' ? 'speaking' : 'writing'}">Choose another task</button>` : ''}${s.key === 'listen' ? '' : ''}</div>
           </div></div></div>`).join('')}
@@ -624,7 +759,7 @@ function vLearn(D) {
     ${!C.diagnosed ? `<div class="card wash"><div class="row between wrap"><div><h3>Start with the diagnostic</h3><p class="small muted" style="margin:4px 0 0">38 questions, about 12 minutes. Lessons you already know are marked Familiar, so you can skip their reading.</p></div><button class="btn" id="go-diag">Take the diagnostic</button></div></div>` : ''}
     ${C.unitTest ? `<div class="card"><div class="row between wrap"><div><span class="label">Unit test ready</span><h3 style="margin-top:4px">${esc(C.unitTest.name)}</h3></div><button class="btn" data-step="unit">Take unit test</button></div></div>` : ''}
     <div class="grid g-2">${C.units.map((u, ui) => `<div class="card">
-      <div class="card-head"><span class="label"><span class="num">${String(ui + 1).padStart(2, '0')}</span>${esc(u.name)}</span><span class="xs dim">${u.passed ? 'Unit passed' : `${u.done} / ${u.lessons.length} proficient`}</span></div>
+      <div class="card-head"><span class="label">${esc(u.name)}</span><span class="xs dim">${u.passed ? 'Unit passed' : `${u.done} / ${u.lessons.length} proficient`}</span></div>
       <div class="list">${u.lessons.map((l) => { const lv = C.level(l.id); return `<div class="li click row" data-lesson="${l.id}"><i class="lvdot lv${lv}"></i><div style="flex:1;min-width:0"><div>${esc(l.title)}</div><div class="xs muted">${MASTERY[lv]} · ${l.mins} min · plan: by ${fmtDate(C.dueOf[l.id])}${C.M[l.id]?.next_review && lv >= 2 ? ` · review ${fmtDate(C.M[l.id].next_review)}` : ''}</div></div>${C.current?.id === l.id ? '<span class="pill">Up next</span>' : '<span class="dim">›</span>'}</div>`; }).join('')}</div>
       ${u.ready && !u.passed ? `<button class="btn sm mt" data-unit="${u.id}">Take unit test</button>` : ''}
     </div>`).join('')}</div>`;
@@ -636,13 +771,15 @@ function vLearn(D) {
       ${r.good.slice(0, 3).map((g) => `<div class="small"><span class="right">✓</span> ${esc(g)}</div>`).join('')}${r.bad.slice(0, 2).map((b) => `<div class="small"><span class="down">✗</span> <span class="wrong">${esc(b)}</span></div>`).join('')}
       <a href="#" class="xs" data-lesson="${l.id}">Open lesson</a></div>`).join('') || '<p class="muted">No rule matches that search.</p>'}</div>`;
   }
-  $('#app').innerHTML = `${pageHead(`${LESSONS.length} lessons in ${UNITS.length} units`, 'Learn the <span class="hl">rules</span>')}
+  $('#app').innerHTML = `${pageHead(`${LESSONS.length} lessons in ${UNITS.length} units`, 'Learn the rules')}
     <div class="seg narrow-seg">${[['course', 'Course'], ['reference', 'Grammar reference']].map(([k, l]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>${body}`;
   $$('[data-t]').forEach((b) => (b.onclick = () => { SUB.learn = b.dataset.t; render(); }));
   $('#go-diag') && ($('#go-diag').onclick = startDiagnostic);
   $$('[data-unit]').forEach((b) => (b.onclick = () => { const u = UNITS.find((x) => x.id === b.dataset.unit); startQuiz({ kind: 'unit', title: `Unit test · ${u.name}`, questions: unitQuestions(u.id) }); }));
   const rq = $('#ref-q'); if (rq) { rq.oninput = () => { SUB.refq = rq.value; const pos = rq.selectionStart; render(); const n = $('#ref-q'); n.focus(); n.setSelectionRange(pos, pos); }; }
 }
+
+const doneHero = (title, sub, good = true) => `<div class="done-hero ${good ? 'good' : 'retry'}"><span class="done-icon">${icon(good ? 'check' : 'grammar')}</span><div><h2>${title}</h2>${sub ? `<p class="muted" style="margin:4px 0 0">${sub}</p>` : ''}</div></div>`;
 
 // Generic multiple-choice quiz (diagnostic / pre-check / check / review / unit) → mastery
 function startQuiz({ kind, title, questions, intro, onDone, record = true, lessonId = null }) {
@@ -692,8 +829,10 @@ function startQuiz({ kind, title, questions, intro, onDone, record = true, lesso
     RUN = {
       view: 'learn', done: true,
       render() {
-        $('#app').innerHTML = `<div class="runner-narrow"><div class="card"><span class="label"><span class="dot"></span>${esc(title)}</span>
-          <div class="row between mt" style="align-items:flex-end"><div><span class="xs muted">Score</span><div class="band">${score}%</div></div><span class="pill">${right} of ${answers.length} correct</span></div>
+        const up = changes.filter((c) => c.level > c.from);
+        $('#app').innerHTML = `<div class="runner-narrow"><div class="card">
+          ${doneHero(kind === 'diagnostic' ? 'Diagnostic complete' : score >= 80 ? 'Nicely done' : 'Finished', kind === 'diagnostic' ? `${up.filter((c) => c.level >= 2).length} lessons are already Familiar. Your course now skips their reading.` : `${right} of ${answers.length} correct${up.length ? ` · ${up.length} lesson${up.length > 1 ? 's' : ''} moved up` : ''}`, score >= 50 || kind === 'diagnostic')}
+          <div class="row between mt" style="align-items:flex-end"><div><span class="xs muted">${esc(title)}</span><div class="band">${score}%</div></div><span class="pill">${right} of ${answers.length} correct</span></div>
           ${changes.length ? `<div class="fb-section"><h3>Mastery changes</h3><div class="list">${changes.map((c) => `<div class="li row between"><span>${esc(LESSON[c.lesson]?.title || c.lesson)}</span><span class="small">${MASTERY[c.from]} → <b style="font-weight:500">${MASTERY[c.level]}</b></span></div>`).join('')}</div></div>` : ''}
           ${kind === 'diagnostic' ? '<p class="small">Lessons you answered fully are now Familiar — open them only for a quick check. Your Next step starts with the first lesson you still need.</p>' : ''}
           <div class="row wrap mt"><button class="btn" id="qz-done">${kind === 'diagnostic' ? 'See my course' : 'Back to today'}</button></div></div></div>`;
@@ -718,50 +857,58 @@ function openLesson(id) {
   const unitName = UNITS.find((u) => u.id === l.unit)?.name || '';
   const idx = LESSONS.indexOf(l);
   const t0 = Date.now();
-  let stage = lv === 0 && !store.get('ec_pre_' + id) ? 'pre' : 'read';
+  const stage = lv === 0 && !store.get('ec_pre_' + id) ? 'pre' : 'read';
   let preScore = null;
+  const screens = [{ kind: 'why', h: 'Why it matters' }, ...l.rules.map((r) => ({ kind: 'rule', h: r.h, r })), { kind: 'trap', h: 'Watch out' }];
+  let k = 0;
+  const check = () => startQuiz({ kind: 'check', title: `Quick check · ${l.title}`, questions: fullCheck(l), onDone: ({ score, res }) => lessonResult(l, score, res, t0) });
   const showLesson = () => {
     RUN = {
       view: 'learn', done: true,
       render() {
+        const sc = screens[k]; const last = k === screens.length - 1;
+        let body = '';
+        if (sc.kind === 'why') body = `${preScore !== null ? `<div class="pre-note">Pre-check: ${preScore}%. Read the ${l.rules.length} rules, then see how much you improve.</div>` : ''}<p class="lesson-lead">${esc(l.why)}</p>
+          <div class="lesson-plan">${l.rules.map((r, i) => `<div><span class="pn">${i + 1}</span>${esc(r.h)}</div>`).join('')}</div>`;
+        else if (sc.kind === 'rule') body = `<p class="lesson-lead">${esc(sc.r.body)}</p>
+          <div class="examples">
+            ${sc.r.good.length ? `<div><div class="ex-head up">${icon('check')}Say this</div><div class="list">${sc.r.good.map((g) => `<div class="li row between"><span>${esc(g)}</span><button class="icon-btn sm" data-say="${esc(g.replace(/\s*\(.*\)$/, ''))}" aria-label="Listen">${icon('play')}</button></div>`).join('')}</div></div>` : ''}
+            ${sc.r.bad.length ? `<div><div class="ex-head down">Not this</div><div class="list">${sc.r.bad.map((b) => `<div class="li"><span class="wrong">${esc(b)}</span></div>`).join('')}</div></div>` : ''}
+          </div>`;
+        else body = `<div class="trap">${esc(l.trap)}</div><p class="small muted" style="margin-top:14px">That's the whole lesson. The quick check has ${l.check.length} questions; 80% moves you on.</p>`;
         $('#app').innerHTML = `
-        ${pageHead(`Lesson ${idx + 1} of ${LESSONS.length} · ${esc(unitName)}`, esc(l.title))}
+        ${pageHead(`Lesson ${idx + 1} of ${LESSONS.length} · ${esc(unitName)} · ${l.mins} min`, esc(l.title))}
         <div class="lesson-grid">
-          <div>
-            ${preScore !== null ? `<div class="card wash"><span class="label">Pre-check</span><p class="small" style="margin:6px 0 0">You scored ${preScore}% before reading. Read the rules below, then take the quick check to see your improvement.</p></div>` : ''}
-            <div class="card wash"><span class="label">Why it matters</span><p style="margin:8px 0 0">${esc(l.why)}</p></div>
-            ${l.rules.map((r, k) => `<div class="card" id="rule-${k}"><div class="card-head"><span class="label"><span class="num">${String(k + 1).padStart(2, '0')}</span>Rule</span></div>
-              <h3 style="font-size:1.12rem;font-weight:500">${esc(r.h)}</h3><p style="margin:6px 0 12px">${esc(r.body)}</p>
-              <div class="examples">
-                ${r.good.length ? `<div><div class="xs muted mb">Correct</div><div class="list">${r.good.map((g) => `<div class="li row between"><span><span class="right">✓</span> ${esc(g)}</span><button class="btn sm ghost" data-say="${esc(g.replace(/\s*\(.*\)$/, ''))}" style="padding:2px 10px">Play</button></div>`).join('')}</div></div>` : ''}
-                ${r.bad.length ? `<div><div class="xs muted mb">Incorrect</div><div class="list">${r.bad.map((b) => `<div class="li"><span class="down">✗</span> <span class="wrong">${esc(b)}</span></div>`).join('')}</div></div>` : ''}
-              </div></div>`).join('')}
-            <div class="card ink"><span class="label">Watch out</span><p style="margin:8px 0 0">${esc(l.trap)}</p></div>
+          <div class="card lesson-card">
+            <div class="steps">${screens.map((_, i) => `<i class="${i <= k ? 'on' : ''}"></i>`).join('')}</div>
+            <div class="lesson-kicker">${sc.kind === 'rule' ? `Rule ${k} of ${l.rules.length}` : sc.kind === 'why' ? 'Start here' : 'Last tip'}</div>
+            <h2 class="lesson-h">${esc(sc.h)}</h2>
+            ${body}
+            <div class="lesson-nav">
+              <button class="btn ghost" id="ls-prev" ${k === 0 ? 'disabled' : ''}>Back</button>
+              ${last ? '<button class="btn" id="ls-check">Take the quick check</button>' : '<button class="btn" id="ls-next">Next</button>'}
+            </div>
+            <div class="xs dim center mt">Use ← and → to move between screens.</div>
           </div>
           <aside class="lesson-side">
             <div class="card">
-              <span class="label">Lesson steps</span>
-              <ol class="lesson-steps">
-                <li class="${preScore !== null || lv > 0 ? 'done' : ''}">Pre-check</li>
-                <li class="now">Read the rules</li>
-                <li>Quick check · ${l.check.length} questions</li>
-                <li>Use it in a speaking or writing task</li>
-              </ol>
-              <div class="xs muted mb">Status: <b style="font-weight:500">${MASTERY[lv]}</b> · ${LEVEL_HINT[lv]}</div>
-              <button class="btn full" id="ls-check">Take the quick check</button>
-              <div class="toc mt">${l.rules.map((r, k) => `<a href="#rule-${k}">${String(k + 1).padStart(2, '0')} · ${esc(r.h)}</a>`).join('')}</div>
+              <span class="label">In this lesson</span>
+              <div class="lesson-toc">${screens.map((x, i) => `<button class="${i === k ? 'on' : ''} ${i < k ? 'seen' : ''}" data-k="${i}"><span class="pn">${i < k ? icon('check') : i + 1}</span>${esc(x.h)}</button>`).join('')}
+                <button data-k="check"><span class="pn">${icon('flag')}</span>Quick check · ${l.check.length} questions</button></div>
+              <div class="xs muted mt">Your level: <b class="w5">${MASTERY[lv]}</b>. ${LEVEL_HINT[lv]}</div>
             </div>
             <details class="card"><summary class="label" style="cursor:pointer">Ringkasan dalam bahasa Indonesia</summary><p class="small" style="margin:10px 0 0">${esc(l.id_sum)}</p></details>
             <button class="btn ghost full" id="ls-back">Back to course</button>
           </aside>
         </div>`;
         $$('[data-say]').forEach((b) => (b.onclick = () => speak(b.dataset.say)));
-        $$('.toc a').forEach((a) => (a.onclick = (e) => { e.preventDefault(); $(a.getAttribute('href'))?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }));
-        $('#ls-back').onclick = () => { RUN = null; go('learn'); };
-        $('#ls-check').onclick = () => startQuiz({
-          kind: 'check', title: `Quick check · ${l.title}`, questions: fullCheck(l),
-          onDone: ({ score, res }) => lessonResult(l, score, res, t0),
-        });
+        const move = (n) => { k = Math.max(0, Math.min(screens.length - 1, n)); RUN.render(); window.scrollTo(0, 0); };
+        $('#ls-prev').onclick = () => move(k - 1);
+        $('#ls-next') && ($('#ls-next').onclick = () => move(k + 1));
+        $('#ls-check') && ($('#ls-check').onclick = () => { keyHandler = null; check(); });
+        $$('[data-k]').forEach((b) => (b.onclick = () => { if (b.dataset.k === 'check') { keyHandler = null; return check(); } move(+b.dataset.k); }));
+        $('#ls-back').onclick = () => { keyHandler = null; RUN = null; go('learn'); };
+        keyHandler = (e) => { if (e.key === 'ArrowRight') { e.preventDefault(); if (k < screens.length - 1) move(k + 1); } else if (e.key === 'ArrowLeft') { e.preventDefault(); move(k - 1); } };
       },
     };
     render(); window.scrollTo(0, 0);
@@ -769,7 +916,7 @@ function openLesson(id) {
   if (stage === 'pre') {
     startQuiz({
       kind: 'check', title: `Pre-check · ${l.title}`, questions: preCheck(l), record: false,
-      intro: 'Two questions before you read. Don\'t worry about mistakes — this shows what the lesson will fix.',
+      intro: 'Two questions before you read. Mistakes are fine. This shows what the lesson will fix.',
       onDone: ({ score }) => { store.set('ec_pre_' + id, 1); preScore = score; showLesson(); },
     });
   } else showLesson();
@@ -781,9 +928,10 @@ function lessonResult(l, score, res, t0) {
   RUN = {
     view: 'learn', done: true,
     render() {
-      $('#app').innerHTML = `<div class="runner-narrow"><div class="card"><span class="label"><span class="dot"></span>${esc(l.title)}</span>
+      $('#app').innerHTML = `<div class="runner-narrow"><div class="card">
+        ${doneHero(passed ? (r && r.level > r.from ? `${esc(l.title)}: now ${MASTERY[r.level]}` : 'Lesson passed') : 'Almost there', passed ? 'Next, use the rule in a real task. That is where it becomes a habit.' : 'You need 80% to move on. One more read usually does it.', passed)}
         <div class="row between mt" style="align-items:flex-end"><div><span class="xs muted">Quick check</span><div class="band">${score}%</div></div>${r ? `<span class="pill">${MASTERY[r.from]} → ${MASTERY[r.level]}</span>` : ''}</div>
-        <p>${passed ? 'Good. Now use the rule in a real task — that is where it becomes a habit. The feedback will check this grammar point.' : 'You need 80% or more to move on. Read the rules once more, then try again.'}</p>
+        <p class="small muted">${passed ? 'The AI feedback will check this grammar point in your next answer.' : 'Read the rules again, then take the quick check.'}</p>
         ${r?.next_review ? `<p class="xs muted">Next review: ${fmtDate(r.next_review)}. It will appear in your plan automatically.</p>` : ''}
         <div class="row wrap mt">
           ${passed ? `<button class="btn" data-start="${tasks.speaking.id}" data-focus="${esc(l.title)}">Apply · ${esc(tasks.speaking.title)}</button><button class="btn ghost" data-start="${tasks.writing.id}" data-focus="${esc(l.title)}">Apply · ${esc(tasks.writing.title)}</button>` : `<button class="btn" data-lesson="${l.id}">Read again</button>`}
@@ -809,17 +957,17 @@ function vPractice(D) {
   const focus = D.course.current?.title || null;
   let n = 0;
   $('#app').innerHTML = `
-  ${pageHead(`${GATES.length} task types · IELTS, TOEFL, interviews and teaching`, 'Practise, <span class="hl">get feedback</span>')}
+  ${pageHead(`${GATES.length} task types · IELTS, TOEFL, interviews and teaching`, 'Practise and get feedback')}
   <div class="row wrap mb"><div class="seg" style="margin:0;flex:0 0 auto">${['all', 'speaking', 'writing'].map((k) => `<button data-f="${k}" class="${filt === k ? 'on' : ''}">${cap(k)}</button>`).join('')}</div>
   <div class="pills">${exams.map((e) => `<button class="pill ${exam === e ? 'on' : ''}" data-e="${esc(e)}">${e === 'all' ? 'All exams' : esc(e)}</button>`).join('')}</div></div>
   ${focus ? `<p class="small muted">Today's grammar focus: <b style="font-weight:500">${esc(focus)}</b>. AI feedback will check it.</p>` : ''}
   ${'EDCBAS'.split('').map((r) => {
     const gs = list.filter((g) => g.rank === r); if (!gs.length) return '';
-    return `<div class="label" style="margin:18px 2px 10px"><span class="num">${String(++n).padStart(2, '0')}</span>${TASK_LEVELS[r]}</div>
+    return `<div class="label" style="margin:18px 2px 10px">${TASK_LEVELS[r]}</div>
     <div class="grid g-3">${gs.map((g) => {
       const st = stats[g.id]; const suggested = g.id === plan.speaking.id || g.id === plan.writing.id;
-      return `<div class="card task-card ${suggested ? 'ink' : ''}" data-start="${g.id}" ${focus ? `data-focus="${esc(focus)}"` : ''}>
-        <div class="pills" style="gap:5px"><span class="pill">${esc(g.exam)} · ${g.skill}</span>${suggested ? '<span class="pill">Suggested today</span>' : ''}</div>
+      return `<div class="card task-card ${suggested ? 'suggested' : ''}" data-start="${g.id}" ${focus ? `data-focus="${esc(focus)}"` : ''}>
+        <div class="row between">${kicon(g.skill)}<span class="pills" style="gap:5px"><span class="pill">${esc(g.exam)}</span>${suggested ? '<span class="pill on-pill">Suggested today</span>' : ''}</span></div>
         <h3>${esc(g.title)}</h3><div class="small muted">${esc(g.desc)}</div>
         <div class="xs dim mt">~${g.mins} min · ${g.mode === 'ai' ? 'AI feedback' : 'scored on device'}${st ? ` · done ${st.clears}×${st.best_band ? ` · best ${st.best_band}` : ''}${st.best_score != null ? ` · best ${Math.round(st.best_score)}%` : ''}` : ''}</div>
       </div>`;
@@ -1010,7 +1158,13 @@ function feedbackView(gate, r, response, focus) {
         ${f.phrases?.length ? `<div class="fb-section"><h3>New phrases</h3><p class="xs dim" style="margin:-4px 0 8px">Added to your phrase bank.</p>${f.phrases.map((p) => `<div class="small"><span style="font-weight:500">${esc(p.phrase)}</span> <span class="muted">— ${esc(p.meaning)}</span></div>`).join('')}</div>` : ''}
       </div>
     </div>
-    <div class="row mt"><button class="btn" id="f-again">Try another</button><button class="btn ghost" id="f-done">Back to today</button></div></div>`;
+    <div class="row mt wrap"><button class="btn" id="f-again">Try another</button><button class="btn ghost" id="f-done">Back to today</button>
+      ${partnerOf() && r.id ? `<button class="btn ghost" id="f-share">${icon('together')}Share with ${esc(partnerOf().name)}</button>` : ''}</div>
+    <div id="f-share-box"></div></div>`;
+  if ($('#f-share')) $('#f-share').onclick = () => {
+    $('#f-share-box').innerHTML = `<div class="card wash mt"><label for="f-note">Add a note (optional)</label><input id="f-note" maxlength="200" placeholder="Can you check my second paragraph?" /><button class="btn sm mt" id="f-send">Share answer and feedback</button></div>`;
+    $('#f-send').onclick = () => sendCheer(partnerOf().id, $('#f-note').value, 'share', r.id).then(() => { RUN = { view: 'practice', done: true, render: () => feedbackView(gate, r, response, focus) }; });
+  };
   $('#f-listen').onclick = () => speak(f.upgraded_answer, 0.95);
   $('#f-slow').onclick = () => speak(f.upgraded_answer, 0.75);
   $('#f-stop').onclick = () => speechSynthesis.cancel();
@@ -1240,6 +1394,89 @@ function phraseRunner(due) {
   };
 }
 
+// ================= TOGETHER =================
+const partnerOf = () => (S.partners || []).find((p) => p.configured) || null;
+function personSummary(isMe, D, p) {
+  if (isMe) {
+    const levels = Object.fromEntries(S.mastery.map((m) => [m.lesson_id, m.level]));
+    return { id: S.user, name: S.name, streak: D.streak, todayMin: D.todayMin, daily: D.prof.daily, minimum: D.prof.minimum, weekMin: D.weekMin, weekTarget: D.weekTarget, learned: D.course.learned, levels, dayMap: D.dayMap, rows: S.settings, tests: S.tests, recent: S.attempts.slice(0, 6), errors: D.patterns.map((c) => ({ category: c.key, n: c.recent })), focus: D.prof.focus };
+  }
+  const v = partnerView(p);
+  return { ...v, focus: v.prof.focus };
+}
+function vTogether(D) {
+  const raw = partnerOf();
+  if (!raw) {
+    $('#app').innerHTML = `${pageHead('Study together', 'Together')}<div class="card"><h3>Your partner isn't set up yet</h3><p class="muted">${S.owner ? 'Set a starting passphrase for your partner in Settings › Study partner. Then they can choose their account on the cover.' : 'Ask Arief to finish setting up your account.'}</p>${S.owner ? '<button class="btn" data-go="settings">Open Settings</button>' : ''}</div>`;
+    return;
+  }
+  const me = personSummary(true, D); const pa = personSummary(false, D, raw);
+  const people = [me, pa];
+  const goal = S.jointGoal || 5;
+  const week = DAY_NAMES.map((n, i) => { const d = addDays(D.monday, i); return { n, d, met: people.map((x) => (x.dayMap[d] || 0) >= profileFor(d, x.rows).minimum) }; });
+  const both = week.filter((w) => w.met.every(Boolean)).length;
+  const notes = S.notes || [];
+  const nameOf = (id) => (id === S.user ? 'You' : pa.name);
+  const recentLine = (a) => `<div class="li row between"><div style="min-width:0"><div class="small">${esc(a.title)}</div><div class="xs muted">${fmtDate(a.date)} · ${esc(a.exam || '')}</div></div><span class="small w5">${a.band ? 'band ' + a.band : a.score != null ? Math.round(a.score) + '%' : ''}</span></div>`;
+  const card = (x, isMe) => {
+    const lastTest = (x.tests || []).filter((t) => t.source !== 'Estimate').slice(-1)[0] || (x.tests || []).slice(-1)[0];
+    return `<div class="card person">
+      <div class="row" style="gap:14px">${ring(x.todayMin / Math.max(1, x.daily), 64, 7, esc(x.name[0]), isMe ? '' : 'ring-partner')}
+        <div><h3>${isMe ? 'You' : esc(x.name)}</h3><div class="small muted">${esc(FOCUS[x.focus] || '')}</div></div></div>
+      <div class="stats mt"><div><div class="v">${x.streak}</div><div class="l">Day streak</div></div><div><div class="v">${Math.round(x.todayMin)}<span class="small">/${x.daily}</span></div><div class="l">Today (min)</div></div><div><div class="v">${hm(x.weekMin)}</div><div class="l">This week</div></div></div>
+      <div class="sub-h">Grammar course · ${x.learned} of ${LESSONS.length} learned</div>
+      <div class="mastery-strip">${LESSONS.map((l) => `<i class="lv${x.levels[l.id] || 0}" title="${esc(l.title)} · ${MASTERY[x.levels[l.id] || 0]}"></i>`).join('')}</div>
+      <div class="sub-h">Latest checkpoint</div>
+      ${lastTest ? `<div class="mini-scores">${SKILLS.map((k) => `<span class="k-${k}"><b>${lastTest[k]}</b>${cap(k)}</span>`).join('')}</div><div class="xs muted">${esc(lastTest.source)} · ${fmtDate(lastTest.date)}</div>` : `<p class="small muted" style="margin:0">${isMe ? 'No test recorded yet.' : (x.tests ? 'No test recorded yet.' : 'Kept private.')}</p>`}
+      <div class="sub-h">Recent practice</div>
+      <div class="list">${(x.recent || []).slice(0, 4).map(recentLine).join('') || '<p class="small muted" style="margin:0">Nothing yet.</p>'}</div>
+      ${x.errors ? `<div class="sub-h">Mistakes to watch</div><div class="pills">${x.errors.slice(0, 4).map((e) => `<span class="pill">${esc(CATEGORIES[e.category]?.name || e.category)} · ${e.n}</span>`).join('') || '<span class="small muted">None in 14 days</span>'}</div>` : ''}
+    </div>`;
+  };
+  $('#app').innerHTML = `${pageHead('Study together', `You and ${esc(pa.name)}`)}
+  <div class="grid g-3">
+    <div class="card span-2">
+      <div class="card-head"><span class="label">Weekly goal together</span><span class="small"><b class="w5">${both}</b> of ${goal} days</span></div>
+      <p class="small muted" style="margin:-4px 0 12px">A day counts when both of you reach your own streak minimum.</p>
+      <div class="tg-grid">${people.map((x, pi) => `<span class="tg-name">${pi === 0 ? 'You' : esc(x.name)}</span>${week.map((w) => `<span class="tg-cell ${w.met[pi] ? 'on' : ''} ${w.d > D.t ? 'future' : ''} ${w.d === D.t ? 'today' : ''}" title="${fmtDate(w.d)}"></span>`).join('')}`).join('')}
+        <span></span>${week.map((w) => `<span class="tg-day ${w.met.every(Boolean) ? 'both' : ''}">${w.n.slice(0, 2)}</span>`).join('')}</div>
+      <div class="bar mt"><i style="width:${Math.min(100, (both / goal) * 100)}%"></i></div>
+      <div class="row between mt"><span class="xs muted">${both >= goal ? 'Goal reached this week.' : `${goal - both} more day${goal - both > 1 ? 's' : ''} to reach your goal.`}</span>
+        <span class="row"><span class="xs muted">Goal</span><button class="btn sm ghost" data-goal="-1" aria-label="Lower goal">−</button><b class="w5">${goal}</b><button class="btn sm ghost" data-goal="1" aria-label="Raise goal">+</button></span></div>
+    </div>
+    <div class="card">
+      <span class="label">Say something</span>
+      <button class="btn full mt" data-cheer="${pa.id}">${icon('heart')}Send ${esc(pa.name)} a cheer</button>
+      <label for="tg-note">Short note</label><textarea id="tg-note" maxlength="400" style="min-height:84px" placeholder="Let's both finish the diagnostic tonight."></textarea>
+      <button class="btn ghost full mt" id="tg-send">Send note</button>
+    </div>
+  </div>
+  <div class="grid g-2">${card(me, true)}${card(pa, false)}</div>
+  <div class="grid g-2">
+    <div class="card"><div class="card-head"><span class="label">Messages</span><span class="xs dim">${notes.length}</span></div>
+      <div class="list">${notes.slice(0, 20).map((n) => `<div class="li note ${n.to_user === S.user && !n.read_at ? 'unread' : ''}"><div class="row between"><span class="small"><b class="w5">${nameOf(n.from_user)}</b> ${n.kind === 'cheer' ? 'sent a cheer' : n.kind === 'share' ? 'shared an answer' : 'wrote'}</span><span class="xs dim">${fmtDate(wibDate(n.created_at))}</span></div>${n.text ? `<div class="small" style="margin-top:4px">${esc(n.text)}</div>` : ''}</div>`).join('') || '<p class="small muted" style="margin:0">No messages yet. A cheer is a nice start.</p>'}</div></div>
+    <div class="card"><div class="card-head"><span class="label">Shared answers</span><span class="xs dim">from either of you</span></div>
+      <div class="list">${(S.shared || []).map((a) => `<details class="li shared"><summary><div class="row between"><span><b class="w5">${a.user_id === S.user ? 'You' : esc(pa.name)}</b> · ${esc(a.title)}</span><span class="small">${a.band ? 'band ' + a.band : ''}</span></div>${a.note ? `<div class="xs muted">“${esc(a.note)}”</div>` : ''}</summary>
+        <div class="xs muted mt">Task</div><div class="small pre">${esc(a.prompt)}</div>
+        <div class="xs muted mt">Answer</div><div class="original pre small">${esc(a.response)}</div>
+        ${a.feedback?.corrections?.length ? `<div class="xs muted mt">Corrections</div>${a.feedback.corrections.slice(0, 5).map((x) => `<div class="err-line small"><span class="wrong">${esc(x.wrong)}</span> → <span class="right">${esc(x.correct)}</span></div>`).join('')}` : ''}
+        ${a.feedback?.upgraded_answer ? `<div class="xs muted mt">Improved version</div><div class="improved small">${esc(a.feedback.upgraded_answer)}</div>` : ''}
+      </details>`).join('') || '<p class="small muted" style="margin:0">After AI feedback, use “Share with partner” to show an answer here.</p>'}</div></div>
+  </div>
+  <p class="xs muted">${esc(pa.name)} sees your streak, time, lessons, practice titles and messages. Checkpoint scores and mistakes follow each person's sharing settings.</p>`;
+  $$('[data-cheer]').forEach((b) => (b.onclick = () => sendCheer(b.dataset.cheer)));
+  $('#tg-send').onclick = () => { const t = $('#tg-note').value.trim(); if (!t) return toast('Write a short note first.', 'err'); sendCheer(pa.id, t, 'note'); };
+  $$('[data-goal]').forEach((b) => (b.onclick = async () => { try { await api('/api/together/goal', { body: { days: Math.max(1, Math.min(7, goal + +b.dataset.goal)) } }); await refresh(); render(); } catch (e) { toast(esc(e.message), 'err'); } }));
+  if (notes.some((n) => n.to_user === S.user && !n.read_at)) api('/api/notes/read', { body: {} }).then(() => refresh()).then(() => renderShell()).catch(() => {});
+}
+
+function vMore() {
+  $('#app').innerHTML = `${pageHead('More', 'More')}
+  <div class="list card">${[['review', 'Review', 'Your mistakes, drills and phrases'], ['progress', 'Progress', 'Checkpoints, estimated bands and milestones'], ['settings', 'Settings', 'Your plan, sharing and device check']].map(([k, l, d]) => `<button class="li more-item" data-go="${k}">${icon(k)}<span><b class="w5">${l}</b><span class="small muted">${d}</span></span></button>`).join('')}
+    <button class="li more-item" id="m-switch">${icon('together')}<span><b class="w5">Switch account</b><span class="small muted">Back to the cover</span></span></button></div>`;
+  $('#m-switch').onclick = switchAccount;
+}
+
 // ================= PROGRESS =================
 function vProgress(D) {
   const tab = SUB.progress || 'checks';
@@ -1247,18 +1484,29 @@ function vProgress(D) {
   if (tab === 'checks') {
     const done = (r) => S.tests.some((t) => t.source !== 'Estimate' && !t.id.startsWith('baseline') && t.date >= addDays(r.date, -3) && t.date <= addDays(r.date, 7));
     body = `<div class="grid g-3">
-      <div class="card span-2"><div class="card-head"><span class="label"><span class="num">01</span>Skill scores over time</span><span class="xs dim">dashed = your target</span></div>${chart(D)}</div>
-      <div class="card"><div class="card-head"><span class="label"><span class="num">02</span>Checkpoint schedule</span></div>
+      <div class="card ink span-2">
+        <div class="card-head"><span class="label">Progress toward your targets</span><span class="pill">${Math.max(0, daysBetween(D.t, D.prof.end))} days left</span></div>
+        <div class="row between" style="align-items:flex-end"><div class="big" style="color:var(--sky)">${D.gapPct == null ? '–' : D.gapPct + '%'}</div><div class="small muted" style="text-align:right">${D.gapPct == null ? 'Record your first test below' : 'of the distance from your first test<br>to your targets is covered'}</div></div>
+        <div class="bar mt"><i style="width:${Math.max(2, D.gapPct || 0)}%"></i></div>
+        <div class="stats mt" style="padding-top:12px;border-top:0.5px solid var(--ink-line)"><div><div class="v">${D.gapPct == null ? '–' : D.gapLeft}</div><div class="l">Points to go</div></div><div><div class="v">${D.nextCheck ? daysBetween(D.t, D.nextCheck.date) : '–'}<span class="small">d</span></div><div class="l">Next checkpoint</div></div><div><div class="v">${D.course.masteryPct}%</div><div class="l">Grammar mastery</div></div></div>
+      </div>
+      <div class="card"><div class="card-head"><span class="label">Estimated bands</span><span class="xs dim">last 6 AI tasks</span></div>
+        ${['speaking', 'writing'].map((sk) => { const c = D.crit[sk]; return `<div class="mb"><div class="row between small"><b class="w5">${cap(sk)}</b><span>${c.band ? (Math.round(c.band * 2) / 2).toFixed(1) : '–'}</span></div>${critRow(sk === 'speaking' ? 'Fluency' : 'Task', c.task)}${critRow('Coherence', c.coherence)}${critRow('Vocabulary', c.lexical)}${critRow('Grammar', c.grammar)}</div>`; }).join('')}
+        <p class="xs dim" style="margin:0">IELTS-style estimates from AI feedback, not official scores.</p></div>
+    </div>
+    <div class="grid g-3">
+      <div class="card span-2"><div class="card-head"><span class="label">Skill scores over time</span><span class="xs dim">dashed = your target</span></div>${chart(D)}</div>
+      <div class="card"><div class="card-head"><span class="label">Checkpoint schedule</span></div>
         <div class="list">${RAIDS.map((r) => `<div class="li row between"><div><div>${esc(r.name)}</div><div class="xs muted">${fmtDate(r.date)} · EF SET 4-skill</div></div><span class="small ${done(r) ? 'up' : r.date < D.t ? 'down' : 'muted'}">${done(r) ? 'Done' : r.date < D.t ? 'Missed' : `in ${daysBetween(D.t, r.date)}d`}</span></div>`).join('')}</div>
         <a class="btn full mt" href="https://www.efset.org/4-skill" target="_blank" rel="noopener">Open EF SET ↗</a></div>
     </div>
     <div class="grid g-3">
-      <div class="card"><div class="card-head"><span class="label"><span class="num">03</span>Record a result</span></div>
+      <div class="card"><div class="card-head"><span class="label">Record a result</span></div>
         <div class="grid g-2 tight"><div><label>Date</label><input id="t-date" type="date" value="${D.t}" /></div><div><label>Source</label><input id="t-src" value="EF SET" maxlength="40" /></div>
         ${SKILLS.map((k) => `<div><label>${cap(k)} (0–100)</label><input id="t-${k}" type="number" min="0" max="100" inputmode="numeric" /></div>`).join('')}</div>
         <label>Certificate link or note</label><input id="t-note" maxlength="200" placeholder="cert.efset.org/…" />
         <button class="btn full mt" id="t-save">Save result</button></div>
-      <div class="card span-2"><div class="card-head"><span class="label"><span class="num">04</span>History</span></div>
+      <div class="card span-2"><div class="card-head"><span class="label">History</span></div>
         <table class="table"><thead><tr><th>Date</th><th>Source</th><th>Reading</th><th>Listening</th><th>Writing</th><th>Speaking</th><th>Overall</th><th></th></tr></thead><tbody>
         ${[...S.tests].reverse().map((t) => { const ov = Math.round((t.reading + t.listening + t.writing + t.speaking) / 4); return `<tr><td>${fmtDate(t.date)}</td><td>${esc(t.source)}${t.note ? `<div class="xs muted">${esc(t.note)}</div>` : ''}</td><td>${t.reading}</td><td>${t.listening}</td><td>${t.writing}</td><td>${t.speaking}</td><td>${ov} · ${cefrOf(ov)}</td><td>${t.id.startsWith('baseline') ? '' : `<button class="btn sm ghost" data-del-test="${t.id}">Delete</button>`}</td></tr>`; }).join('')}
         </tbody></table></div>
@@ -1269,7 +1517,7 @@ function vProgress(D) {
     <div class="grid g-3">${SIDE_QUESTS.map((q) => { const l = last[q.key]; const ago = l ? daysBetween(l, D.t) : null; const dueQ = ago === null || ago >= q.every; return `<div class="card ${dueQ ? '' : 'wash'}"><div class="row between"><h3>${esc(q.name)}</h3><span class="pill">${dueQ ? 'Due' : `In ${q.every - ago}d`}</span></div>
       <p class="small muted">${esc(q.why)} Every ${q.every} days${l ? ` · last ${fmtDate(l)}` : ''}.</p>
       <div class="row"><a class="btn sm" href="${q.url}" target="_blank" rel="noopener">Open ↗</a><button class="btn sm ghost" data-sq="${q.key}" ${l === D.t ? 'disabled' : ''}>Mark done</button></div></div>`; }).join('')}</div>`;
-  } else if (tab === 'partner') {
+  } else if (tab === 'partner-old') {
     const ps = (S.partners || []).map(partnerView);
     const me = { name: S.name, streak: D.streak, weekMin: D.weekMin, weekTarget: D.weekTarget, todayMin: D.todayMin, daily: D.prof.daily, learned: D.course.learned };
     body = ps.length ? `<div class="grid g-2">${[me, ...ps].map((p) => `<div class="card"><div class="row"><span class="avatar">${esc(p.name[0])}</span><b>${esc(p.name)}</b>${p.configured === false ? '<span class="pill">not set up yet</span>' : ''}</div>
@@ -1283,7 +1531,7 @@ function vProgress(D) {
       <div class="ms-grid">${ms.map((m) => `<div class="ms ${m.got ? 'got' : ''}"><div class="n">${esc(m.name)}</div><div class="d">${esc(m.desc)}</div></div>`).join('')}</div></div>`;
   }
   $('#app').innerHTML = `${pageHead('Checkpoints on the 17th of each month', 'Progress')}
-    <div class="seg narrow-seg">${[['checks', 'Checkpoints'], ['partner', 'Study partner'], ['platforms', 'Platforms'], ['ms', 'Milestones']].map(([k, l]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>` + body;
+    <div class="seg narrow-seg">${[['checks', 'Checkpoints'], ['platforms', 'Platforms'], ['ms', 'Milestones']].map(([k, l]) => `<button data-t="${k}" class="${tab === k ? 'on' : ''}">${l}</button>`).join('')}</div>` + body;
   $$('[data-t]').forEach((b) => (b.onclick = () => { SUB.progress = b.dataset.t; render(); }));
   if ($('#t-save')) $('#t-save').onclick = async () => {
     const b = { date: $('#t-date').value, source: $('#t-src').value, note: $('#t-note').value };
@@ -1322,7 +1570,7 @@ function vSettings(D) {
   $('#app').innerHTML = `${pageHead('Your account', 'Settings')}
   <div class="grid g-2">
     <div class="card">
-      <div class="card-head"><span class="label"><span class="num">01</span>Study plan</span><span class="xs dim">changes apply from today</span></div>
+      <div class="card-head"><span class="label">Study plan</span><span class="xs dim">changes apply from today</span></div>
       <label>Display name</label><input id="st-name" maxlength="24" value="${esc(S.name)}" />
       <div class="grid g-2 tight">
         <div><label>Daily target (minutes)</label><input id="st-daily" type="number" min="15" max="180" step="5" value="${p.daily}" /></div>
@@ -1338,21 +1586,27 @@ function vSettings(D) {
       <button class="btn full" id="st-save">Save plan</button>
     </div>
     <div>
-      <div class="card"><div class="card-head"><span class="label"><span class="num">02</span>Today with these settings</span></div>
+      <div class="card"><div class="card-head"><span class="label">Today with these settings</span></div>
         <div class="list">${Object.entries(D.blocks).map(([k, v]) => `<div class="li row between"><span>${esc(BLOCK_INFO[k]?.label || k)}</span><span class="small muted">${v} min</span></div>`).join('')}</div>
         <p class="xs muted" style="margin:10px 0 0">Phase ${D.phase.n} of 4 · ${fmtDate(D.phase.start)} – ${fmtDate(D.phase.end)}</p></div>
-      ${S.owner ? `<div class="card"><div class="card-head"><span class="label"><span class="num">03</span>Study partner accounts</span></div>
-        ${others.map((o) => `<div class="row between"><span class="row"><span class="avatar">${esc(o.name[0])}</span>${esc(o.name)}</span>${o.configured ? '<span class="pill">Active</span>' : `<button class="btn sm" data-invite="${o.id}">Create setup code</button>`}</div><div id="inv-${o.id}"></div>`).join('')}
-        <p class="xs muted">A setup code works once and expires after 7 days. ${others.map((o) => esc(o.name)).join(', ')} chooses their own passphrase; you never see it.</p></div>` : ''}
-      <div class="card"><div class="card-head"><span class="label"><span class="num">04</span>Device check</span></div>
+      <div class="card"><div class="card-head"><span class="label">Sharing with your partner</span></div>
+        <label class="check-row"><input type="checkbox" id="sh-scores" ${p.share?.scores === false ? '' : 'checked'} /><span>Show my checkpoint scores</span></label>
+        <label class="check-row"><input type="checkbox" id="sh-errors" ${p.share?.errors ? 'checked' : ''} /><span>Show my mistake patterns (categories only)</span></label>
+        <p class="xs muted">Streaks, time, lessons, practice titles and messages are always shared. Saved with “Save plan”.</p></div>
+      ${S.owner ? `<div class="card"><div class="card-head"><span class="label">Study partner</span></div>
+        ${others.map((o) => `<div class="row between"><span class="row"><span class="avatar">${esc(o.name[0])}</span>${esc(o.name)}</span><span class="pill">${o.configured ? 'Active' : 'Waiting for a passphrase'}</span></div>
+        <label for="pp-${o.id}">${o.configured ? `Reset ${esc(o.name)}'s passphrase` : `Starting passphrase for ${esc(o.name)}`}</label>
+        <div class="row"><input id="pp-${o.id}" type="password" autocomplete="new-password" placeholder="At least 8 characters" /><button class="btn sm" data-pp="${o.id}">${o.configured ? 'Reset' : 'Set'}</button></div>`).join('')}
+        <p class="xs muted">Tell ${others.map((o) => esc(o.name)).join(', ')} the passphrase in person. They can change it later in their own Settings.</p></div>` : ''}
+      <div class="card"><div class="card-head"><span class="label">Device check</span></div>
         <div class="list"><div class="li row between"><span>Text-to-speech</span><span class="${tts ? 'up' : 'down'}">${tts ? 'Available' : 'Not available'}</span></div>
         <div class="li row between"><span>Speech recognition</span><span class="${sr ? 'up' : 'down'}">${sr ? 'Available' : 'Not available'}</span></div></div>
         <div class="grid g-2 tight mt"><button class="btn" id="c-tts">Test voice</button><button class="btn ghost" id="c-sr">Test microphone</button></div>
         <div class="improved mt" id="c-out" style="min-height:44px"><span class="muted small">Say "I'm practising English".</span></div>
         <p class="xs muted">iPhone: Safari, allow the microphone, keep Siri on. Samsung Tab: Chrome or Samsung Internet. Keyboard dictation always works as a fallback.</p></div>
-      <div class="card"><div class="card-head"><span class="label"><span class="num">05</span>Passphrase and session</span></div>
+      <div class="card"><div class="card-head"><span class="label">Passphrase and session</span></div>
         <div class="grid g-2 tight"><input id="pw-cur" type="password" placeholder="Current passphrase" autocomplete="current-password" /><input id="pw-new" type="password" placeholder="New passphrase" autocomplete="new-password" /></div>
-        <div class="row wrap mt"><button class="btn ghost" id="pw-save">Change passphrase</button><button class="btn danger" id="c-signout">Sign out on this device</button></div></div>
+        <div class="row wrap mt"><button class="btn ghost" id="pw-save">Change passphrase</button><button class="btn ghost" id="c-switch">Switch account</button><button class="btn danger" id="c-signout">Sign out on this device</button></div></div>
     </div>
   </div>`;
   let rest = [...(p.restDays || [])];
@@ -1360,12 +1614,15 @@ function vSettings(D) {
   $('#st-save').onclick = async () => {
     const daily = +$('#st-daily').value;
     if (daily < p.daily && !confirm(`Lower your daily target from ${p.daily} to ${daily} minutes? A smaller target can make your March goal harder to reach.`)) return;
-    const value = { daily, minimum: +$('#st-min').value, restDays: rest, focus: $('#st-focus').value, end: $('#st-end').value, targets: Object.fromEntries(SKILLS.map((k) => [k, +$('#st-t-' + k).value])) };
+    const value = { daily, minimum: +$('#st-min').value, restDays: rest, focus: $('#st-focus').value, end: $('#st-end').value, targets: Object.fromEntries(SKILLS.map((k) => [k, +$('#st-t-' + k).value])), share: { scores: $('#sh-scores').checked, errors: $('#sh-errors').checked } };
     try { await api('/api/settings', { body: { date: D.t, value, name: $('#st-name').value } }); toast('Plan saved. It applies from today.', 'good'); await refresh(); renderShell(); render(); } catch (e) { toast(esc(e.message), 'err'); }
   };
-  $$('[data-invite]').forEach((b) => (b.onclick = async () => {
-    try { const r = await api('/api/invite', { body: { user: b.dataset.invite } }); $('#inv-' + b.dataset.invite).innerHTML = `<div class="improved mt"><div class="xs muted">Setup code for ${esc(r.user)} (valid ${r.validDays} days)</div><div class="mid" style="letter-spacing:.12em">${esc(r.code)}</div><div class="xs muted">Open ${esc(location.host)} → choose the account → enter this code → create a passphrase.</div></div>`; } catch (e) { toast(esc(e.message), 'err'); }
+  $$('[data-pp]').forEach((b) => (b.onclick = async () => {
+    const id = b.dataset.pp; const v = $('#pp-' + id).value;
+    if (v.length < 8) return toast('Use at least 8 characters.', 'err');
+    try { await api('/api/partner/passphrase', { body: { user: id, passphrase: v } }); toast('Passphrase set. Your partner can sign in from the cover now.', 'good'); await refresh(); render(); } catch (e) { toast(esc(e.message), 'err'); }
   }));
+  $('#c-switch').onclick = switchAccount;
   $('#c-tts').onclick = () => speak('Your device is ready. Let\'s practise.');
   let rec = null;
   $('#c-sr').onclick = () => {
@@ -1374,7 +1631,7 @@ function vSettings(D) {
     if (rec.start('')) { $('#c-sr').textContent = 'Stop'; $('#c-sr').className = 'btn rec'; }
   };
   $('#pw-save').onclick = async () => { try { await api('/api/auth/password', { body: { current: $('#pw-cur').value, next: $('#pw-new').value } }); toast('Passphrase changed. Other devices were signed out.', 'good'); $('#pw-cur').value = $('#pw-new').value = ''; } catch (e) { toast(esc(e.message), 'err'); } };
-  $('#c-signout').onclick = async () => { try { await api('/api/auth/logout', { body: {} }); } catch { /* ignore */ } TOKEN = null; store.del('eh_token'); S = null; boot(); };
+  $('#c-signout').onclick = async () => { try { await api('/api/auth/logout', { body: {} }); } catch { /* ignore */ } delete TOKENS[S.user]; saveTokens(); TOKEN = null; S = null; boot(); };
 }
 
 window.addEventListener('online', async () => { if (TOKEN && S && !RUN) { try { await refresh(); render(); } catch { /* ignore */ } } });

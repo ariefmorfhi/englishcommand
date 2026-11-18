@@ -1,4 +1,4 @@
-# English Command
+# English Pathway
 
 A calm, data-driven English training app (IELTS + TOEFL, speaking & writing first) that runs entirely on your own Cloudflare account. No dependency on Claude to run.
 

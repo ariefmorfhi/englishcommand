@@ -1,4 +1,4 @@
-// English Command — grammar syllabus
+// English Pathway — grammar syllabus
 // Each lesson: English explanation (simple B1 wording) + hidden Indonesian summary (bahasa baku, KBBI).
 // tags link lessons to error categories in the error log.
 

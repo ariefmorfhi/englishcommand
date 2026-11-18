@@ -1,4 +1,4 @@
-// English Command — content bank (general IELTS + TOEFL, not job-specific)
+// English Pathway — content bank (general IELTS + TOEFL, not job-specific)
 
 export const CATEGORIES = {
   verb_form: { name: 'Verb forms', hint: 'Base verb after to / modals; -ing after prepositions; correct participles.' },
@@ -285,6 +285,22 @@ export const STAR = [
   'Where do you see yourself in five years, and how does this role fit that plan?',
 ];
 
+// Career change and work abroad — any industry, not operations-specific
+export const CAREER = [
+  'Tell me about yourself in two minutes, focusing on your work experience.',
+  'Why do you want to change your career, and why now?',
+  'Why do you want to work in this country rather than at home?',
+  'What skills from your current job will help you in a new field?',
+  'Tell me about a time you learned something new quickly. How did you do it?',
+  'Describe a time you worked with people from a different background.',
+  'Tell me about a time you solved a problem without help from your manager.',
+  'What is your biggest weakness, and what are you doing about it?',
+  'How do you handle pressure and tight deadlines?',
+  'Tell me about a time you received difficult feedback. What did you do next?',
+  'How would your colleagues describe you?',
+  'What questions do you have for us?',
+];
+
 // ---------- Teaching English (general + classroom) ----------
 export const TEACH_EXPLAIN = [
   'Explain to a 12-year-old student the difference between "much" and "many", with two examples each.',
@@ -324,6 +340,7 @@ export const GATES = [
   { id: 'ops-interview', rank: 'A', skill: 'speaking', exam: 'Job Interview', mode: 'ai', title: 'Operations interview (STAR)', desc: '3 interview questions. Use Situation, Task, Action, Result. Up to 2 minutes each.', mins: 7, perQ: 120 },
   { id: 'ielts-ac1', rank: 'A', skill: 'writing', exam: 'IELTS Academic', mode: 'ai', title: 'Academic Task 1 (data)', desc: 'Summarise the table in at least 150 words in 20 minutes.', mins: 20, minWords: 150 },
   { id: 'mock-speaking', rank: 'S', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Full speaking mock', desc: 'Part 1 (3 Qs) + Part 2 (cue card) + Part 3 (3 Qs) in one run.', mins: 14 },
+  { id: 'career-interview', rank: 'C', skill: 'speaking', exam: 'Job Interview', mode: 'ai', title: 'Job interview (career change)', desc: '3 interview questions for a new job abroad, any industry. Up to 2 minutes each, STAR where it fits.', mins: 7, perQ: 120 },
   { id: 'teach-explain', rank: 'D', skill: 'speaking', exam: 'Teaching', mode: 'ai', title: 'Explain a grammar point', desc: 'Explain a rule to a student simply, with examples. Up to 2 minutes.', mins: 4, perQ: 120 },
   { id: 'teach-class', rank: 'C', skill: 'speaking', exam: 'Teaching', mode: 'ai', title: 'Classroom language', desc: 'Give instructions or feedback to a class. Up to 90 seconds each, 2 situations.', mins: 5, perQ: 90 },
   { id: 'teach-email', rank: 'C', skill: 'writing', exam: 'Teaching', mode: 'ai', title: 'Email to parents or colleagues', desc: 'A clear, polite school email. Target: 10 minutes, 100+ words.', mins: 10, minWords: 100 },
@@ -360,6 +377,8 @@ export function makeTask(gate) {
     }
     case 'ops-interview':
       return { header: 'Panel interview — Operations role (any industry)', questions: sample(STAR, 3) };
+    case 'career-interview':
+      return { header: 'Interview for a new role abroad (any industry)', questions: sample(CAREER, 3) };
     case 'mock-speaking': {
       const p1 = pick(PART1), c = pick(PART2), p3 = pick(PART3);
       return {
@@ -474,6 +493,13 @@ export const PLAN_TASKS = {
     3: { speaking: ['toefl-interview', 'ielts-p3', 'ops-interview'], writing: ['toefl-discussion', 'toefl-email', 'ielts-task2'] },
     4: { speaking: ['toefl-interview', 'mock-speaking'], writing: ['toefl-discussion', 'toefl-email', 'mock-writing'] },
   },
+  // Risti: TOEFL first, general English, work English, about 20% teaching
+  'career-toefl': {
+    1: { speaking: ['toefl-repeat', 'toefl-interview', 'ielts-p1', 'toefl-repeat', 'teach-explain'], writing: ['toefl-build', 'toefl-email', 'toefl-build', 'toefl-email', 'teach-email'] },
+    2: { speaking: ['toefl-interview', 'toefl-repeat', 'career-interview', 'ielts-p1', 'teach-explain'], writing: ['toefl-email', 'toefl-discussion', 'toefl-build', 'toefl-email', 'teach-email'] },
+    3: { speaking: ['toefl-interview', 'career-interview', 'ielts-p2', 'toefl-repeat', 'teach-class'], writing: ['toefl-discussion', 'toefl-email', 'toefl-discussion', 'toefl-build', 'teach-email'] },
+    4: { speaking: ['toefl-interview', 'career-interview', 'toefl-repeat', 'ielts-p3', 'teach-class'], writing: ['toefl-discussion', 'toefl-email', 'toefl-discussion', 'toefl-email', 'teach-email'] },
+  },
   'general-teaching': {
     1: { speaking: ['toefl-repeat', 'teach-explain', 'ielts-p1'], writing: ['toefl-build', 'teach-email', 'toefl-email'] },
     2: { speaking: ['teach-explain', 'teach-class', 'ielts-p1', 'toefl-interview'], writing: ['teach-email', 'toefl-email', 'ielts-gt1'] },
@@ -486,7 +512,8 @@ export const FOCUS = {
   'ielts-gt': 'IELTS General Training',
   'ielts-ac': 'IELTS Academic',
   toefl: 'TOEFL iBT',
-  'general-teaching': 'General English and teaching (with IELTS/TOEFL practice)',
+  'career-toefl': 'TOEFL, general and work English (20% teaching)',
+  'general-teaching': 'General English and teaching',
 };
 
 // Share of the daily target for each block, per phase (sums to 1). Teaching focus gets more grammar.
@@ -496,6 +523,12 @@ export const BLOCK_SHARE = {
     { grammar: 0.11, debuff: 0.11, speaking: 0.33, writing: 0.23, listening: 0.11, phrases: 0.11 },
     { grammar: 0.06, debuff: 0.11, speaking: 0.33, writing: 0.33, listening: 0.11, phrases: 0.06 },
     { grammar: 0.06, debuff: 0.06, speaking: 0.39, writing: 0.33, listening: 0.10, phrases: 0.06 },
+  ],
+  'career-toefl': [
+    { grammar: 0.30, debuff: 0.15, speaking: 0.20, writing: 0.15, listening: 0.10, phrases: 0.10 },
+    { grammar: 0.25, debuff: 0.10, speaking: 0.25, writing: 0.20, listening: 0.10, phrases: 0.10 },
+    { grammar: 0.15, debuff: 0.10, speaking: 0.30, writing: 0.25, listening: 0.10, phrases: 0.10 },
+    { grammar: 0.10, debuff: 0.10, speaking: 0.35, writing: 0.25, listening: 0.10, phrases: 0.10 },
   ],
   'general-teaching': [
     { grammar: 0.30, debuff: 0.15, speaking: 0.20, writing: 0.15, listening: 0.10, phrases: 0.10 },
@@ -507,3 +540,49 @@ export const BLOCK_SHARE = {
 
 // Baseline used for "gap closed" (EF SET, 17 Nov 2026)
 export const BASELINE = { reading: 63, listening: 67, writing: 50, speaking: 45 };
+
+// Phrase of the day on the cover — useful for work abroad, interviews and daily life
+export const DAILY_PHRASES = [
+  { p: "I'm responsible for…", tip: 'Use "for" + noun or -ing: "I\'m responsible for scheduling the team."' },
+  { p: "I'd like to follow up on…", tip: 'A polite way to remind someone in an email.' },
+  { p: 'Could you walk me through…?', tip: 'Ask someone to explain a process step by step.' },
+  { p: "I've been working as… for three years.", tip: 'Present perfect continuous + "for" a period of time.' },
+  { p: 'In my current role, I…', tip: 'A clean way to start an interview answer.' },
+  { p: 'One thing I learned from that was…', tip: 'Ends a STAR story with a reflection.' },
+  { p: "I'm not sure I follow. Could you rephrase that?", tip: 'Ask for clarification without sounding lost.' },
+  { p: 'That makes sense.', tip: 'Shows you understood. More natural than "I understand your explanation."' },
+  { p: "Let me get back to you on that.", tip: "Buys time when you don't know the answer yet." },
+  { p: 'As a result, …', tip: 'Links an action to its outcome in speaking and writing.' },
+  { p: "I'd appreciate it if you could…", tip: 'A formal request. Follow it with a base verb.' },
+  { p: 'I look forward to hearing from you.', tip: 'A standard closing line. "Forward to" + -ing.' },
+  { p: 'Please find attached…', tip: 'Formal email phrase for a file you are sending.' },
+  { p: 'I was wondering if…', tip: 'A softer way to ask: "I was wondering if we could move the meeting."' },
+  { p: 'It depends on…', tip: 'Never "it depends of". Always "on".' },
+  { p: 'On the one hand… on the other hand…', tip: 'Compares two sides in a discussion answer.' },
+  { p: "I'm keen to…", tip: 'British English for "I really want to": "I\'m keen to learn new systems."' },
+  { p: 'to take ownership of', tip: 'Means to take full responsibility: "I took ownership of the project."' },
+  { p: 'to meet a deadline', tip: 'The natural verb is "meet", not "reach" or "catch".' },
+  { p: 'to make a decision', tip: 'We "make" a decision, not "do" or "take" one in most contexts.' },
+  { p: 'to gain experience in', tip: '"I gained experience in customer service."' },
+  { p: 'a steep learning curve', tip: 'Something hard to learn at first: "The first month was a steep learning curve."' },
+  { p: 'to adapt to a new environment', tip: 'Useful when you talk about moving abroad.' },
+  { p: 'to get along well with', tip: 'To have a good relationship with someone.' },
+  { p: 'Could you clarify what you mean by…?', tip: 'Ask about one specific word or idea.' },
+  { p: 'From my point of view, …', tip: 'Introduces your opinion. Never "In my point of view".' },
+  { p: "To be honest, …", tip: 'Softens an honest opinion in conversation.' },
+  { p: 'I agree to some extent, but…', tip: 'Partial agreement, useful in TOEFL and IELTS discussions.' },
+  { p: "It's worth mentioning that…", tip: 'Adds an extra important point.' },
+  { p: 'This shows that…', tip: 'Explains what an example proves.' },
+  { p: 'I have a strong background in…', tip: 'Highlights experience in an interview or cover letter.' },
+  { p: "I'm currently looking for a role in…", tip: 'Explains your job search clearly.' },
+  { p: 'What does a typical day look like in this role?', tip: 'A good question to ask at the end of an interview.' },
+  { p: 'to be in charge of', tip: 'Another way to say responsible for: "I\'m in charge of the night shift."' },
+  { p: 'to look into', tip: 'To investigate: "I\'ll look into the problem today."' },
+  { p: 'to come up with', tip: 'To think of an idea: "We came up with a new process."' },
+  { p: 'to point out', tip: 'To mention something important: "She pointed out a mistake."' },
+  { p: 'Sorry, could you say that again a bit more slowly?', tip: 'Perfect for phone calls and interviews.' },
+  { p: "Thank you for your patience.", tip: 'More positive than "Sorry for the delay".' },
+  { p: 'I would describe myself as…', tip: 'Starts a self-description in an interview.' },
+  { p: 'Overall, …', tip: 'Introduces a summary in Writing Task 1 and spoken answers.' },
+  { p: 'Let me give you an example.', tip: 'Signals support for your point. Examiners like it.' },
+];

@@ -1,4 +1,4 @@
-// English Command — curriculum logic: diagnostic, pacing, mastery, reviews, unit tests.
+// English Pathway — curriculum logic: diagnostic, pacing, mastery, reviews, unit tests.
 import { LESSONS, UNITS } from './grammar.js';
 
 export const LEVELS = ['Not started', 'Attempted', 'Familiar', 'Proficient', 'Mastered'];

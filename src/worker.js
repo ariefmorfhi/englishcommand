@@ -1,4 +1,4 @@
-// English Command — Cloudflare Worker API (multi-user)
+// English Pathway — Cloudflare Worker API (two accounts)
 // Storage: D1 (binding DB) · AI feedback: Workers AI (binding AI) · Static app: ASSETS
 
 const MODEL = '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
@@ -12,7 +12,7 @@ const REVIEW_DAYS = { 1: 1, 2: 2, 3: 5, 4: 21 }; // mastery level → days until
 
 const DEFAULT_PROFILE = {
   arief: { daily: 90, minimum: 20, restDays: [], focus: 'ielts-gt', start: '2026-11-17', end: '2027-03-31', targets: { speaking: 58, writing: 60, reading: 63, listening: 63 } },
-  risti: { daily: 60, minimum: 20, restDays: [], focus: 'general-teaching', start: '2026-11-19', end: '2027-03-31', targets: { speaking: 55, writing: 55, reading: 63, listening: 63 } },
+  risti: { daily: 60, minimum: 20, restDays: [], focus: 'career-toefl', start: '2026-11-19', end: '2027-03-31', targets: { speaking: 55, writing: 55, reading: 63, listening: 63 } },
 };
 
 const SCHEMA = [
@@ -26,6 +26,8 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS tests (id TEXT PRIMARY KEY, user_id TEXT NOT NULL DEFAULT 'arief', date TEXT NOT NULL, source TEXT NOT NULL, reading REAL, listening REAL, writing REAL, speaking REAL, note TEXT, created_at TEXT NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS settings (user_id TEXT NOT NULL, effective_from TEXT NOT NULL, value TEXT NOT NULL, PRIMARY KEY (user_id, effective_from))`,
   `CREATE TABLE IF NOT EXISTS mastery (user_id TEXT NOT NULL, lesson_id TEXT NOT NULL, level INTEGER NOT NULL DEFAULT 0, best REAL NOT NULL DEFAULT 0, attempts INTEGER NOT NULL DEFAULT 0, last_date TEXT, next_review TEXT, PRIMARY KEY (user_id, lesson_id))`,
+  `CREATE TABLE IF NOT EXISTS notes (id TEXT PRIMARY KEY, from_user TEXT NOT NULL, to_user TEXT NOT NULL, kind TEXT NOT NULL, text TEXT, ref TEXT, created_at TEXT NOT NULL, read_at TEXT)`,
+  `CREATE INDEX IF NOT EXISTS idx_notes_to ON notes(to_user, created_at)`,
   `CREATE INDEX IF NOT EXISTS idx_events_user_date ON events(user_id, date)`,
   `CREATE INDEX IF NOT EXISTS idx_errors_user ON errors(user_id, created_at)`,
 ];
@@ -83,6 +85,16 @@ async function requireAuth(req, db) {
   return { token, user: r.user_id || OWNER };
 }
 
+async function optionalAuth(req, db) {
+  const h = req.headers.get('authorization') || '';
+  const token = h.startsWith('Bearer ') ? h.slice(7) : '';
+  if (!/^[0-9a-f]{64}$/.test(token)) return null;
+  const r = await db.prepare('SELECT user_id FROM sessions WHERE token=?').bind(token).first();
+  return r ? { user: r.user_id } : null;
+}
+const sharesErrors = (rows) => { const last = rows[rows.length - 1]; try { return !!JSON.parse(last?.value || '{}').share?.errors; } catch { return false; } };
+const sharesScores = (rows) => { const last = rows[rows.length - 1]; if (!last) return true; try { return JSON.parse(last.value).share?.scores !== false; } catch { return true; } };
+
 const eventStmt = (db, user, e) =>
   db.prepare('INSERT OR IGNORE INTO events (id,user_id,date,type,activity,minutes,xp,ref,created_at) VALUES (?,?,?,?,?,?,?,?,?)')
     .bind(e.id || uid(), user, e.date, e.type, e.activity || null, e.minutes || 0, 0, e.ref || null, now());
@@ -99,7 +111,8 @@ function validProfile(v, prev) {
   if (v.minimum != null) p.minimum = num(v.minimum, 5, 60) ?? prev.minimum;
   if (p.minimum > p.daily) p.minimum = p.daily;
   if (Array.isArray(v.restDays)) p.restDays = [...new Set(v.restDays.map(Number).filter((d) => d >= 0 && d <= 6))].slice(0, 3);
-  if (['ielts-gt', 'ielts-ac', 'toefl', 'general-teaching'].includes(v.focus)) p.focus = v.focus;
+  if (['ielts-gt', 'ielts-ac', 'toefl', 'career-toefl', 'general-teaching'].includes(v.focus)) p.focus = v.focus;
+  if (v.share && typeof v.share === 'object') p.share = { scores: v.share.scores !== false, errors: !!v.share.errors };
   if (isDate(v.end) && v.end > (p.start || '2026-01-01')) p.end = v.end;
   if (v.targets && typeof v.targets === 'object') {
     p.targets = { ...prev.targets };
@@ -222,25 +235,35 @@ async function route(req, env, url) {
   // --- auth (public) ---
   if (path === '/api/auth/status' && m === 'GET') {
     const r = await db.prepare('SELECT id, name, hash IS NOT NULL AS configured FROM users ORDER BY id').all();
-    return json({ users: r.results.map((u) => ({ id: u.id, name: u.name, configured: !!u.configured })) });
+    const out = { users: r.results.map((u) => ({ id: u.id, name: u.name, configured: !!u.configured })) };
+    // A device that is signed in to either account may show both study streaks on the cover.
+    const known = await optionalAuth(req, db);
+    const date = url.searchParams.get('date');
+    if (known && isDate(date)) {
+      const [days, settings] = await db.batch([
+        db.prepare('SELECT user_id, date, SUM(minutes) AS minutes FROM events WHERE date>=? GROUP BY user_id, date ORDER BY date').bind(addDays(date, -120)),
+        db.prepare('SELECT user_id, effective_from, value FROM settings ORDER BY effective_from'),
+      ]);
+      for (const u of out.users) {
+        u.days = days.results.filter((d) => d.user_id === u.id).map((d) => ({ date: d.date, minutes: d.minutes }));
+        u.settings = settings.results.filter((x) => x.user_id === u.id).map((x) => ({ from: x.effective_from, ...JSON.parse(x.value) }));
+      }
+      out.signedInAs = known.user;
+    }
+    return json(out);
   }
   if (path === '/api/auth/setup' && m === 'POST') {
     const b = await body();
     const user = await db.prepare('SELECT * FROM users WHERE id=?').bind(str(b.user, 20)).first();
     if (!user) bad('Unknown account.', 404);
     if (user.hash) bad('This account is already set up. Sign in instead.', 409);
-    const owner = await db.prepare('SELECT hash FROM users WHERE id=?').bind(OWNER).first();
-    if (user.id !== OWNER || owner?.hash) {
-      const inv = await getMeta(db, 'invite:' + user.id);
-      if (!inv || inv.until < Date.now() || str(b.code, 12).toUpperCase() !== inv.code) bad('Invalid or expired setup code. Ask Arief for a new one.', 403);
-    }
+    if (user.id !== OWNER) bad('Ask Arief to set your starting passphrase in his Settings.', 403);
     const pass = typeof b.passphrase === 'string' ? b.passphrase : '';
     if (pass.length < 8) bad('Passphrase must be at least 8 characters.');
     const salt = newSalt(); const token = newToken();
     await db.batch([
       db.prepare('UPDATE users SET salt=?, hash=?, name=COALESCE(NULLIF(?,\'\'), name) WHERE id=?').bind(salt, await hashPass(pass, salt), str(b.name, 24), user.id),
       db.prepare('INSERT INTO sessions (token,user_id,created_at) VALUES (?,?,?)').bind(token, user.id, now()),
-      db.prepare('DELETE FROM meta WHERE key=?').bind('invite:' + user.id),
     ]);
     return json({ token, user: user.id });
   }
@@ -283,15 +306,48 @@ async function route(req, env, url) {
     ]);
     return json({ ok: true });
   }
-  if (path === '/api/invite' && m === 'POST') {
-    if (user !== OWNER) bad('Only Arief can create setup codes.', 403);
+  if (path === '/api/partner/passphrase' && m === 'POST') {
+    if (user !== OWNER) bad('Only Arief can set a partner passphrase.', 403);
     const b = await body();
     const target = await db.prepare('SELECT * FROM users WHERE id=?').bind(str(b.user, 20)).first();
     if (!target || target.id === OWNER) bad('Unknown account.', 404);
-    if (target.hash) bad(`${target.name}'s account is already set up.`, 409);
-    const code = hex(crypto.getRandomValues(new Uint8Array(4))).toUpperCase();
-    await setMetaStmt(db, 'invite:' + target.id, { code, until: Date.now() + 7 * 86400000 }).run();
-    return json({ code, user: target.id, validDays: 7 });
+    const pass = typeof b.passphrase === 'string' ? b.passphrase : '';
+    if (pass.length < 8) bad('Passphrase must be at least 8 characters.');
+    const salt = newSalt();
+    await db.batch([
+      db.prepare('UPDATE users SET salt=?, hash=? WHERE id=?').bind(salt, await hashPass(pass, salt), target.id),
+      db.prepare('DELETE FROM sessions WHERE user_id=?').bind(target.id),
+    ]);
+    return json({ ok: true, user: target.id });
+  }
+
+  // --- together: cheers, notes and shared answers between the two accounts ---
+  if (path === '/api/notes' && m === 'POST') {
+    const b = await body();
+    const kind = ['cheer', 'note', 'share'].includes(b.kind) ? b.kind : 'note';
+    const to = await db.prepare('SELECT id FROM users WHERE id=? AND id<>?').bind(str(b.to, 20), user).first();
+    if (!to) bad('Unknown partner.', 404);
+    let ref = null;
+    if (kind === 'share') {
+      const a = await db.prepare('SELECT id FROM attempts WHERE id=? AND user_id=?').bind(str(b.ref, 40), user).first();
+      if (!a) bad('Answer not found.', 404);
+      ref = a.id;
+    }
+    const text = str(b.text, 400);
+    if (kind === 'note' && !text) bad('Write a short note first.');
+    await db.prepare('INSERT INTO notes (id,from_user,to_user,kind,text,ref,created_at) VALUES (?,?,?,?,?,?,?)').bind(clientId(b.id), user, to.id, kind, text, ref, now()).run();
+    return json({ ok: true });
+  }
+  if (path === '/api/notes/read' && m === 'POST') {
+    await db.prepare('UPDATE notes SET read_at=? WHERE to_user=? AND read_at IS NULL').bind(now(), user).run();
+    return json({ ok: true });
+  }
+  if (path === '/api/together/goal' && m === 'POST') {
+    const b = await body();
+    const days = num(b.days, 1, 7);
+    if (days === null) bad('days required');
+    await setMetaStmt(db, 'joint_goal', Math.round(days)).run();
+    return json({ ok: true, days: Math.round(days) });
   }
 
   // --- full state for the signed-in user (+ partner summary) ---
@@ -299,7 +355,7 @@ async function route(req, env, url) {
     const date = url.searchParams.get('date');
     if (!isDate(date)) bad('date required');
     const since = addDays(date, -90);
-    const [me, days, today, attempts, gateStats, errors, phrases, tests, quests, settings, mastery, partners, pDays, pSettings, pMastery] = await db.batch([
+    const [me, days, today, attempts, gateStats, errors, phrases, tests, quests, settings, mastery, partners, pDays, pSettings, pMastery, pTests, pAttempts, notes, shared, pErrors] = await db.batch([
       db.prepare('SELECT id, name FROM users WHERE id=?').bind(user),
       db.prepare('SELECT date, SUM(minutes) AS minutes FROM events WHERE user_id=? GROUP BY date ORDER BY date').bind(user),
       db.prepare("SELECT COALESCE(activity,'other') AS activity, SUM(minutes) AS minutes FROM events WHERE user_id=? AND date=? GROUP BY 1").bind(user, date),
@@ -314,8 +370,15 @@ async function route(req, env, url) {
       db.prepare('SELECT id, name, hash IS NOT NULL AS configured FROM users WHERE id<>?').bind(user),
       db.prepare('SELECT user_id, date, SUM(minutes) AS minutes FROM events WHERE user_id<>? AND date>=? GROUP BY user_id, date ORDER BY date').bind(user, since),
       db.prepare('SELECT user_id, effective_from, value FROM settings WHERE user_id<>? ORDER BY effective_from').bind(user),
-      db.prepare('SELECT user_id, level, COUNT(*) AS n FROM mastery WHERE user_id<>? GROUP BY user_id, level').bind(user),
+      db.prepare('SELECT user_id, lesson_id, level, last_date FROM mastery WHERE user_id<>?').bind(user),
+      db.prepare('SELECT user_id, date, source, reading, listening, writing, speaking FROM tests WHERE user_id<>? ORDER BY date').bind(user),
+      db.prepare('SELECT user_id, date, gate_id, skill, exam, title, band, score, created_at FROM attempts WHERE user_id<>? ORDER BY created_at DESC LIMIT 20').bind(user),
+      db.prepare('SELECT * FROM notes WHERE to_user=? OR from_user=? ORDER BY created_at DESC LIMIT 40').bind(user, user),
+      db.prepare(`SELECT a.id, a.user_id, a.date, a.title, a.skill, a.exam, a.prompt, a.response, a.feedback, a.band, n.text AS note, n.created_at AS shared_at
+        FROM notes n JOIN attempts a ON a.id = n.ref WHERE n.kind='share' AND (n.to_user=? OR n.from_user=?) ORDER BY n.created_at DESC LIMIT 20`).bind(user, user),
+      db.prepare('SELECT user_id, category, COUNT(*) AS n FROM errors WHERE user_id<>? AND date>=? GROUP BY user_id, category ORDER BY n DESC').bind(user, addDays(date, -14)),
     ]);
+    const jointGoal = Number(await getMeta(db, 'joint_goal')) || 5;
     const ai = await aiUsage(db, user);
     const parse = (rows) => rows.map((r) => ({ from: r.effective_from, ...JSON.parse(r.value) }));
     return json({
@@ -328,8 +391,14 @@ async function route(req, env, url) {
         id: p.id, name: p.name, configured: !!p.configured,
         days: pDays.results.filter((d) => d.user_id === p.id).map((d) => ({ date: d.date, minutes: d.minutes })),
         settings: parse(pSettings.results.filter((s) => s.user_id === p.id)),
-        mastery: Object.fromEntries(pMastery.results.filter((x) => x.user_id === p.id).map((x) => [x.level, x.n])),
+        mastery: pMastery.results.filter((x) => x.user_id === p.id).map((x) => ({ lesson_id: x.lesson_id, level: x.level, last_date: x.last_date })),
+        tests: sharesScores(pSettings.results.filter((s) => s.user_id === p.id)) ? pTests.results.filter((t) => t.user_id === p.id) : [],
+        recent: pAttempts.results.filter((a) => a.user_id === p.id),
+        errors: sharesErrors(pSettings.results.filter((s) => s.user_id === p.id)) ? pErrors.results.filter((e) => e.user_id === p.id).map((e) => ({ category: e.category, n: e.n })) : null,
       })),
+      notes: notes.results,
+      shared: shared.results.map((a) => ({ ...a, feedback: a.feedback ? parseLooseJson(a.feedback) : null })),
+      jointGoal,
       ai: { mine: ai.mine, total: ai.total, pool: AI_POOL, cap: AI_USER_CAP, left: Math.max(0, Math.min(AI_USER_CAP - ai.mine, AI_POOL - ai.total)) },
       owner: user === OWNER,
     });
