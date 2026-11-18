@@ -12,7 +12,7 @@ const REVIEW_DAYS = { 1: 1, 2: 2, 3: 5, 4: 21 }; // mastery level → days until
 
 const DEFAULT_PROFILE = {
   arief: { daily: 90, minimum: 20, restDays: [], focus: 'ielts-gt', start: '2026-11-17', end: '2027-03-31', targets: { speaking: 58, writing: 60, reading: 63, listening: 63 } },
-  risti: { daily: 60, minimum: 20, restDays: [], focus: 'career-toefl', start: '2026-11-19', end: '2027-03-31', targets: { speaking: 55, writing: 55, reading: 63, listening: 63 } },
+  risti: { daily: 30, minimum: 15, restDays: [], focus: 'career-toefl', start: '2026-11-19', end: '2027-03-31', targets: { speaking: 55, writing: 55, reading: 63, listening: 63 } },
 };
 
 const SCHEMA = [
