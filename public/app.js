@@ -38,12 +38,30 @@ function toast(msg, kind = '') {
 
 // ================= API =================
 let TOKEN = store.get('eh_token');
+// Network errors ("Load failed" on iPhone, "Failed to fetch" on Chrome) happen when the phone
+// switches networks or the browser suspends a background tab. Retry safe requests, then explain.
+const NET_MSG = 'Connection dropped. Check your internet and try again — nothing was lost.';
+const isNetErr = (e) => e instanceof TypeError || /load failed|failed to fetch|networkerror|network connection/i.test(String(e?.message));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function api(path, opts = {}) {
-  const res = await fetch(path, {
-    method: opts.method || (opts.body ? 'POST' : 'GET'),
-    headers: { 'content-type': 'application/json', ...(TOKEN ? { authorization: 'Bearer ' + TOKEN } : {}) },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-  });
+  const method = opts.method || (opts.body ? 'POST' : 'GET');
+  const retries = opts.retry ?? (method === 'GET' ? 2 : 0);
+  let res;
+  for (let attempt = 0; ; attempt++) {
+    try {
+      res = await fetch(path, {
+        method,
+        headers: { 'content-type': 'application/json', ...(TOKEN ? { authorization: 'Bearer ' + TOKEN } : {}) },
+        body: opts.body ? JSON.stringify(opts.body) : undefined,
+        cache: 'no-store',
+      });
+      break;
+    } catch (e) {
+      if (!isNetErr(e)) throw e;
+      if (attempt >= retries) { const err = new Error(NET_MSG); err.network = true; throw err; }
+      await sleep(700 * (attempt + 1));
+    }
+  }
   let data = {};
   try { data = await res.json(); } catch { /* ignore */ }
   if (res.status === 401 && !path.startsWith('/api/auth/')) { TOKEN = null; store.del('eh_token'); boot(); throw new Error('Your session expired. Sign in again.'); }
@@ -246,6 +264,7 @@ function renderAuth(configured) {
 
 let PREV = null;
 async function refresh() {
+  await flushOutbox();
   S = await api('/api/state?date=' + today());
   const D = derive();
   const got = milestones(D).filter((m) => m.got).map((m) => m.name);
@@ -417,12 +436,27 @@ function drawTimer() {
   };
   $('#t-cancel').onclick = () => { if (!confirm('Discard this timer?')) return; TIMER = null; store.del('eh_timer'); drawTimer(); };
 }
-async function logTime(activity, minutes, type = 'study', count = 0) {
+// Time logs carry a client id, so a retried request can never be counted twice.
+const newId = () => 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+async function flushOutbox() {
+  const box = store.get('ec_outbox', []); if (!box.length) return;
+  const left = [];
+  for (const ev of box) { try { await api('/api/event', { body: ev, retry: 1 }); } catch (e) { if (e.network) left.push(ev); } }
+  store.set('ec_outbox', left);
+  if (box.length !== left.length) toast(`Synced ${box.length - left.length} saved log${box.length - left.length > 1 ? 's' : ''}.`);
+}
+async function logTime(activity, minutes, type = 'study', count = 0, ref) {
+  const ev = { id: newId(), date: today(), type, activity, minutes, count, ...(ref ? { ref } : {}) };
   try {
-    await api('/api/event', { body: { date: today(), type, activity, minutes, count } });
+    await api('/api/event', { body: ev, retry: 2 });
     toast(`Logged ${minutes} min · ${esc(BLOCK_INFO[activity]?.label || 'Practice')}`);
-    await refresh(); render();
-  } catch (e) { toast(esc(e.message), 'err'); }
+  } catch (e) {
+    if (!e.network) return toast(esc(e.message), 'err');
+    store.set('ec_outbox', [...store.get('ec_outbox', []), ev]);
+    toast('You\'re offline. Your time is saved on this device and will sync automatically.');
+  }
+  try { await refresh(); } catch { /* keep current view */ }
+  render();
 }
 
 // ================= PRACTICE =================
@@ -911,7 +945,7 @@ function vLearn(D) {
     const ls = LESSONS.filter((l) => l.unit === u.id);
     const d = ls.filter((l) => done.has(l.id)).length;
     return `<div class="card"><div class="card-head"><span class="label"><span class="num">${String(ui + 1).padStart(2, '0')}</span>${esc(u.name)}</span><span class="xs dim">${d} / ${ls.length}</span></div>
-      <div class="list">${ls.map((l) => `<div class="li click row" data-lesson="${l.id}" style="cursor:pointer"><span class="check ${done.has(l.id) ? 'on' : ''}"></span><div style="flex:1;min-width:0"><div>${esc(l.title)}</div><div class="xs muted">${l.mins} min${l.notes2018 ? ' · includes a fix to your 2018 notes' : ''}</div></div><span class="dim">›</span></div>`).join('')}</div></div>`;
+      <div class="list">${ls.map((l) => `<div class="li click row" data-lesson="${l.id}" style="cursor:pointer"><span class="check ${done.has(l.id) ? 'on' : ''}"></span><div style="flex:1;min-width:0"><div>${esc(l.title)}</div><div class="xs muted">${l.mins} min</div></div><span class="dim">›</span></div>`).join('')}</div></div>`;
   }).join('')}`;
   bindLesson();
 }
@@ -929,7 +963,6 @@ function openLesson(id) {
       $('#app').innerHTML = `
       <div class="page-head"><span class="label"><span class="dot"></span>Lesson ${idx + 1} of ${LESSONS.length} · ${esc(unitName)}</span><h1 style="font-size:1.7rem">${esc(l.title)}</h1></div>
       <div class="card wash"><span class="label">Why it matters</span><p style="margin:8px 0 0">${esc(l.why)}</p></div>
-      ${l.notes2018 ? `<div class="card" style="border-color:var(--sky);border-width:1px"><span class="label"><span class="num">!</span>Your 2018 notes said…</span><p class="small" style="margin:8px 0 0">${esc(l.notes2018)}</p></div>` : ''}
       ${l.rules.map((r, k) => `<div class="card"><div class="card-head"><span class="label"><span class="num">${String(k + 1).padStart(2, '0')}</span>Rule</span></div>
         <h3 style="font-size:1.1rem;font-weight:500">${esc(r.h)}</h3><p style="margin:6px 0 10px">${esc(r.body)}</p>
         ${r.good.length ? `<div class="list">${r.good.map((g) => `<div class="li row between"><span><span class="right">✓</span> ${esc(g)}</span><button class="btn sm ghost" data-say="${esc(g.replace(/\s*\(.*\)$/, ''))}" style="padding:2px 10px">Play</button></div>`).join('')}</div>` : ''}
@@ -978,7 +1011,8 @@ function lessonCheck(l, t0) {
     const passed = score >= 80;
     const mins = Math.max(1, Math.min(60, Math.round(((Date.now() - t0) / 60000) * 10) / 10));
     try {
-      await api('/api/event', { body: { date: today(), type: passed ? 'lesson' : 'study', activity: 'grammar', minutes: mins, ref: passed ? l.id : undefined } });
+      const ev = { id: newId(), date: today(), type: passed ? 'lesson' : 'study', activity: 'grammar', minutes: mins, ...(passed ? { ref: l.id } : {}) };
+      try { await api('/api/event', { body: ev, retry: 2 }); } catch (e) { if (!e.network) throw e; store.set('ec_outbox', [...store.get('ec_outbox', []), ev]); toast('You\'re offline. Your result is saved on this device and will sync automatically.'); }
       await refresh();
     } catch (e) { toast(esc(e.message), 'err'); }
     const D = derive();
@@ -1032,6 +1066,7 @@ function vSettings() {
   $('#c-signout').onclick = async () => { try { await api('/api/auth/logout', { body: {} }); } catch { /* ignore */ } TOKEN = null; store.del('eh_token'); boot(); };
 }
 
+window.addEventListener('online', async () => { if (TOKEN && S && !RUN) { try { await refresh(); render(); } catch { /* ignore */ } } });
 document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState === 'visible' && TOKEN && S && !RUN) { try { await refresh(); render(); } catch { /* ignore */ } }
 });

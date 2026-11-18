@@ -24,7 +24,6 @@ export const LESSONS = [
       { h: 'Keep the object', body: 'Verbs like make, create, send, give usually need an object. Indonesian can drop it; English cannot.', good: ['Can you send it to me?', 'I created it last year.'], bad: ['Can you send to me?', 'I created last year.'] },
     ],
     trap: '"Ada" = "there is / there are", not "have". "Di kantor ada lima orang" → "There are five people in the office."',
-    notes2018: null,
     id_sum: 'Setiap klausa dalam bahasa Inggris wajib memiliki subjek dan predikat (verba). Jika tidak ada subjek yang nyata, gunakan "it" (untuk cuaca, waktu, atau pendapat) atau "there" (untuk menyatakan keberadaan, padanan kata "ada"). Kata "be" (am/is/are/was/were) wajib dipakai sebelum adjektiva, nomina, atau keterangan tempat. Objek dari verba seperti "send", "make", dan "create" tidak boleh dihilangkan.',
     check: [
       { q: 'Choose the correct sentence.', o: ['Is necessary to book in advance.', 'It is necessary to book in advance.', 'Necessary to book in advance.'], a: 1, why: 'English needs a subject: "It is…".' },
@@ -43,7 +42,6 @@ export const LESSONS = [
       { h: 'a number of = plural', body: '"A number of" means "many", so it takes a plural verb. "The number of" is one number, so it is singular.', good: ['A number of customers have complained.', 'The number of complaints has fallen.'], bad: ['A number of customers has complained.'] },
     ],
     trap: 'Do not mix this with "verb jamak / tunggal". Simply remember: he / she / it / one thing → add -s.',
-    notes2018: 'Your 2018 notes said "if the subject is plural, the verb must be singular" and "singular subject, plural verb". The idea was right, but the labels were confusing. Use the simple rule instead: one thing (he / she / it) → verb + s; many things → no -s. Also, the note "what you do make you smart" should be "what you do makes you smart", because a clause used as a subject is singular.',
     id_sum: 'Pada kala kini (present simple), verba mendapat akhiran -s/-es jika subjeknya orang ketiga tunggal (he, she, it, atau satu benda). Jika subjeknya I, you, we, they, atau nomina jamak, gunakan verba bentuk dasar. Verba selalu mengikuti inti subjek, bukan kata yang terletak di antaranya. Kata everyone, each, the number of, gerund (-ing), dan anak kalimat yang menjadi subjek selalu dianggap tunggal, sedangkan "a number of" (= banyak) dianggap jamak.',
     check: [
       { q: 'One of the main problems ___ the long waiting time.', o: ['are', 'is', 'be'], a: 1, why: 'The subject is "one".' },
@@ -65,7 +63,6 @@ export const LESSONS = [
       { h: 'Fixed phrases without an article', body: 'go to work, at work, at home, go to bed, by car, by bus, in hospital (UK), at school (as a student).', good: ['I go to work by motorbike.'], bad: ['I go to the work by a motorbike.'] },
     ],
     trap: 'Check every singular noun in your writing: does it have a / an / the / my / this? If not, it is probably wrong.',
-    notes2018: 'Your 2018 notes said "a before a consonant letter, an before a vowel letter". The real rule is about SOUND: "an hour", "a university", "an MBA". This is exactly why you wrote "a Operations Supervisor".',
     id_sum: 'Nomina tunggal yang dapat dihitung tidak boleh berdiri sendiri; harus didahului a/an/the atau kata lain seperti my/this. Pilihan "a" atau "an" ditentukan oleh BUNYI awal kata, bukan hurufnya: "an hour", "a university", "an operations supervisor". Gunakan "the" jika pembaca sudah tahu benda yang dimaksud (sudah disebut sebelumnya, satu-satunya, atau dijelaskan oleh bagian kalimat lain) serta dengan superlatif. Jangan gunakan artikel untuk nomina jamak atau nomina tak terhitung yang bermakna umum.',
     check: [
       { q: 'He has ___ honest attitude.', o: ['a', 'an', 'the'], a: 1, why: '"Honest" starts with a vowel sound (h is silent).' },
@@ -84,7 +81,6 @@ export const LESSONS = [
       { h: 'Some words change meaning', body: '"experience" (skill, uncountable) vs "an experience" (one event). "work" (job, uncountable) vs "a work" (art, rare). "time" (uncountable) vs "three times" (occasions).', good: ['I have five years of experience.', 'It was a great experience.'], bad: ['I have many experiences in management.'] },
     ],
     trap: '"Informasi-informasi" or "saran-saran" do not become "informations" or "advices". Keep them singular.',
-    notes2018: 'Your notes listed uncountable nouns correctly. One addition: "staff", "feedback", "research" and "experience" (as skill) are also uncountable, and you will use them often in job interviews.',
     id_sum: 'Beberapa nomina yang dalam bahasa Indonesia dapat dihitung justru tidak dapat dihitung dalam bahasa Inggris, misalnya information, advice, equipment, feedback, research, dan experience (dalam arti pengalaman kerja). Nomina tersebut tidak boleh diberi akhiran -s atau artikel a/an. Untuk menghitungnya, gunakan satuan seperti "a piece of". Gunakan many/few untuk nomina terhitung, dan much/little untuk nomina tak terhitung.',
     check: [
       { q: 'Choose the correct sentence.', o: ['I need more informations.', 'I need more information.', 'I need an information.'], a: 1, why: '"Information" is uncountable.' },
@@ -106,7 +102,6 @@ export const LESSONS = [
       { h: 'in vs at the end', body: '"at the end of the day" = at that point. "in the end" = finally, after a long process.', good: ['We close the cash register at the end of the day.', 'In the end, we chose a new supplier.'], bad: [] },
     ],
     trap: '"Pada" can be in, on, or at. Translate the TIME, not the word "pada": "pada bulan Maret" → in March; "pada hari Senin" → on Monday; "pada pukul 7" → at 7.',
-    notes2018: null,
     id_sum: 'Bayangkan piramida: IN untuk periode yang panjang atau umum (bulan, tahun, musim, pagi/siang/sore), ON untuk hari dan tanggal, AT untuk titik waktu yang tepat (jam, "at night", "at the moment"). Jangan memakai preposisi sebelum this, next, last, every, today, tomorrow, dan yesterday. Kata "pada" dalam bahasa Indonesia bisa diterjemahkan menjadi in, on, atau at bergantung pada jenis waktunya.',
     check: [
       { q: 'The final assessment is ___ 31 March.', o: ['in', 'on', 'at'], a: 1, why: 'Dates → on.' },
@@ -127,7 +122,6 @@ export const LESSONS = [
       { h: 'Arrive in / arrive at', body: 'arrive in + city or country; arrive at + building or point. Never "arrive to".', good: ['We arrived in Singapore.', 'We arrived at the hotel.'], bad: ['We arrived to the hotel.'] },
     ],
     trap: '"Di" can also be in, on, or at. Ask: is it inside (in), on a surface or line (on), or a point / purpose (at)?',
-    notes2018: null,
     id_sum: 'IN dipakai untuk ruang tertutup atau wilayah luas (kantor, kota, negara, mobil). ON dipakai untuk permukaan, lantai gedung, situs web, dan angkutan umum (bus, kereta, pesawat). AT dipakai untuk titik tertentu atau tempat yang dikaitkan dengan kegiatannya (at work, at home, at the airport, at a company). Kata home (setelah verba gerak), abroad, dan overseas tidak memakai preposisi. Kata "di" dalam bahasa Indonesia dapat menjadi in, on, atau at sesuai jenis tempatnya.',
     check: [
       { q: 'I work ___ an indoor climbing gym.', o: ['at', 'on', 'in the'], a: 0, why: 'Workplace / company → at.' },
@@ -147,7 +141,6 @@ export const LESSONS = [
       { h: 'After a preposition → noun or -ing', body: 'A preposition is followed by a noun, a pronoun, or a verb + -ing — never the base verb.', good: ['I am interested in working abroad.', 'Thank you for helping me.'], bad: ['I am interested in work abroad.', 'Thank you for help me.'] },
     ],
     trap: '"Diskusi tentang", "menghubungi dengan", "menikah dengan" → discuss, contact, marry (no preposition). But "married TO someone" when using "be married".',
-    notes2018: 'Your notes had a good list (keen on, believe in, depend on, interested in…). The missing half is the verbs that take NO preposition, such as "discuss" and "contact" — these are where you lose marks.',
     id_sum: 'Banyak adjektiva dan verba memiliki pasangan preposisi yang tetap, misalnya responsible for, interested in, good at, depend on, dan apply for. Pasangan ini harus dihafal sebagai satu kesatuan, bukan diterjemahkan kata demi kata. Sebaliknya, verba seperti discuss, contact, attend, dan marry tidak memakai preposisi walaupun padanannya dalam bahasa Indonesia memakai kata "tentang" atau "dengan". Setelah preposisi, gunakan nomina atau verba berakhiran -ing.',
     check: [
       { q: 'I am responsible ___ purchasing and stock control.', o: ['to', 'of', 'for'], a: 2, why: 'responsible for' },
@@ -169,7 +162,6 @@ export const LESSONS = [
       { h: 'Make / let / help + object + base verb', body: 'make someone do, let someone do, help someone (to) do. Causative "have": have someone do; "get": get someone to do.', good: ['My manager let me lead the project.', 'I had the technician check the wall.', 'I got my team to update the SOP.'], bad: ['My manager let me to lead the project.'] },
     ],
     trap: 'Indonesian verbs never change form, so check every verb after "to", a modal, or a preposition.',
-    notes2018: 'Your 2018 notes said "modals (can, may, will, should, must) + V2". This is wrong: modals are followed by the BASE verb (V1). "We should pray every day" was correct, but the label V2 was not.',
     id_sum: 'Setelah "to" (infinitif) dan setelah modal (can, will, should, must, dan sebagainya), selalu gunakan verba bentuk dasar tanpa -s, -ed, atau -ing. Setelah preposisi dan setelah verba tertentu (enjoy, avoid, finish, suggest, look forward to), gunakan verba berakhiran -ing. Verba lain (want, need, plan, decide, hope) diikuti oleh "to" + verba dasar. Verba make, let, dan have (kausatif) diikuti objek lalu verba dasar tanpa "to".',
     check: [
       { q: 'I hope to ___ my English by March.', o: ['improving', 'improve', 'improved'], a: 1, why: 'to + base verb' },
@@ -189,7 +181,6 @@ export const LESSONS = [
       { h: 'Do not forget "be" in the continuous', body: 'The continuous needs am / is / are + -ing.', good: ['She is working today.'], bad: ['She working today.'] },
     ],
     trap: '"Saya bekerja di…" describing your job = present simple: "I work at…", not "I am working at…" (unless it is temporary).',
-    notes2018: null,
     id_sum: 'Present simple dipakai untuk fakta, kebiasaan, dan rutinitas (I work, she manages). Present continuous (am/is/are + -ing) dipakai untuk tindakan yang sedang berlangsung atau situasi sementara (I am preparing for the test). Verba keadaan seperti know, need, want, dan understand tidak dipakai dalam bentuk -ing.',
     check: [
       { q: 'I ___ as an operations supervisor. (my job)', o: ['work', 'am work', 'working'], a: 0, why: 'A permanent job → present simple.' },
@@ -209,7 +200,6 @@ export const LESSONS = [
       { h: 'Learn the irregular V3 forms', body: 'learn – learned – learned; know – knew – known; take – took – taken; write – wrote – written; lead – led – led; build – built – built.', good: ['I have learned a lot.', 'I have led several events.'], bad: ['I have learn a lot.', 'I have lead several events.'] },
     ],
     trap: '"Saya sudah bekerja di sini selama dua tahun" = "I have worked here for two years" (not "I worked here since two years").',
-    notes2018: 'Your 2018 tense chart listed 16 tenses. For IELTS and real work, about 8 matter: present simple, present continuous, present perfect, past simple, past continuous, past perfect, will / going to, and would (conditionals). Also, the chart was missing "-ing" in future perfect continuous (will have been + V-ing) — you can safely ignore that tense.',
     id_sum: 'Past simple dipakai untuk kejadian pada waktu lampau yang sudah selesai dan disebutkan (in 2024, last year, yesterday). Present perfect (have/has + V3) dipakai untuk pengalaman tanpa waktu tertentu, periode yang belum selesai, dan bersama for/since. "For" diikuti lama waktu (for two years), sedangkan "since" diikuti titik awal (since 2024). Bentuk "since two years ago" tidak tepat.',
     check: [
       { q: 'I ___ at Boulder Planet since June 2024.', o: ['work', 'worked', 'have worked'], a: 2, why: 'since + present perfect' },
@@ -228,7 +218,6 @@ export const LESSONS = [
       { h: 'After when / if / as soon as → present, not will', body: 'In time and condition clauses about the future, use the present simple.', good: ['I will call you when I arrive.', 'If I pass, I will apply abroad.'], bad: ['I will call you when I will arrive.'] },
     ],
     trap: '"Nanti kalau saya sudah sampai" → "when I arrive" (present), not "when I will arrive".',
-    notes2018: null,
     id_sum: 'Gunakan "be going to" untuk rencana yang sudah diputuskan sebelumnya, "will" untuk keputusan saat berbicara, janji, dan prediksi, serta present continuous untuk janji temu atau rencana yang sudah diatur. Setelah kata when, if, dan as soon as yang merujuk ke masa depan, gunakan present simple, bukan "will".',
     check: [
       { q: 'I ___ apply for jobs in Australia next year. (already planned)', o: ['am going to', 'will to', 'going to'], a: 0, why: 'A decided plan → going to.' },
@@ -247,7 +236,6 @@ export const LESSONS = [
       { h: 'Active causative', body: 'have + person + base verb; get + person + to + base verb.', good: ['I had the technician check the auto-belay.', 'I got my team to update the checklist.'], bad: ['I got my team update the checklist.'] },
     ],
     trap: '"Di-" in Indonesian is often passive, but many "di-" sentences sound better as active English. Use the passive only when the doer is unimportant.',
-    notes2018: 'Your causative notes were correct. Small fix: in "I got the wall painted by my friend", "by my friend" is fine but usually unnecessary.',
     id_sum: 'Kalimat pasif dibentuk dengan be + verba bentuk ketiga (V3); kala ditunjukkan oleh bentuk "be" (is checked, was approved, will be sent). Gunakan pasif jika tindakannya lebih penting daripada pelakunya. Bentuk kausatif "have/get + objek + V3" berarti meminta orang lain mengerjakan sesuatu untuk kita (We had the walls repainted).',
     check: [
       { q: 'All new staff ___ during their first week.', o: ['are trained', 'are train', 'training'], a: 0, why: 'be + V3' },
@@ -270,7 +258,6 @@ export const LESSONS = [
       { h: 'too vs very', body: '"very" = a lot (positive or neutral). "too" before an adjective = more than is good (a problem). "too" at the end of a sentence = also.', good: ['The gym is very busy. (fine)', 'The gym is too busy to train. (a problem)', 'I like coffee too. (also)'], bad: [] },
     ],
     trap: '"Lebih baik lagi" ≠ "more better". Use "even better" or "much better".',
-    notes2018: 'Two corrections from your 2018 notes: (1) It said "an interested film ✓ / an interesting film ✗" — this is reversed. A film is INTERESTING; you are INTERESTED. (2) The list of adjective suffixes included -en, -ate, -fy and -ize (darken, stimulate, satisfy, computerize). These are VERB suffixes, not adjective suffixes. Also, the comparative rule is about syllables: "careful" has two syllables but takes "more careful", not "carefuller". And "very / too / so" are adverbs of degree; "too" before an adjective means "terlalu", not "juga".',
     id_sum: 'Adjektiva berakhiran -ed menyatakan perasaan seseorang (I am interested, tertarik), sedangkan -ing menyatakan hal yang menimbulkan perasaan itu (an interesting film, film yang menarik). Adjektiva menerangkan nomina, adverbia menerangkan verba (careful → carefully; good → well). Untuk perbandingan, kata bersuku satu memakai -er/-est, kata bersuku dua yang berakhiran -y memakai -ier/-iest, dan kata lainnya memakai more/most. Jangan pernah menulis "more better". "Too" sebelum adjektiva berarti "terlalu", sedangkan "too" di akhir kalimat berarti "juga".',
     check: [
       { q: 'The presentation was really ___.', o: ['bored', 'boring', 'bore'], a: 1, why: 'The thing causing the feeling → -ing.' },
@@ -293,7 +280,6 @@ export const LESSONS = [
       { h: 'Unless = if not', body: 'Unless you book in advance, you might not get a slot.', good: ['Unless you book in advance, you may not get a slot.'], bad: ['Unless you don\'t book… (double negative)'] },
     ],
     trap: 'Never put "will" or "would" in the if-clause itself.',
-    notes2018: null,
     id_sum: 'Kalimat pengandaian tipe 1 (If + present, will + verba dasar) dipakai untuk kemungkinan nyata di masa depan. Tipe 2 (If + past, would + verba dasar) dipakai untuk pengandaian yang tidak nyata pada saat ini. Tipe 3 (If + had + V3, would have + V3) dipakai untuk pengandaian tentang masa lalu. Jangan memakai "will" atau "would" di dalam anak kalimat yang diawali "if". "Unless" berarti "jika tidak".',
     check: [
       { q: 'If I ___ enough money, I will join the course.', o: ['will save', 'save', 'saved'], a: 1, why: 'First conditional: if + present.' },
@@ -312,7 +298,6 @@ export const LESSONS = [
       { h: 'Noun clauses as subjects', body: 'What / that / how clauses can be the subject. They take a singular verb.', good: ['What customers want is fast service.', 'How we train new staff matters.'], bad: ['What customers want are fast service.'] },
     ],
     trap: '"Saya tidak tahu di mana kantornya" → "I don\'t know where the office is" (not "where is the office").',
-    notes2018: 'Your notes on double subjects ("Mr Jack he is a good teacher" ✗) were correct — keep that rule.',
     id_sum: 'Kata who dipakai untuk orang, which untuk benda, that untuk keduanya, whose untuk kepemilikan, dan where untuk tempat. Jangan mengulang subjek atau objek setelah kata penghubung tersebut. Pertanyaan yang berada di dalam kalimat lain (pertanyaan tidak langsung) memakai susunan subjek + verba tanpa do/does/did: "I don\'t know where the office is".',
     check: [
       { q: 'The manager ___ hired me is very supportive.', o: ['which', 'who', 'whose'], a: 1, why: 'People → who.' },
@@ -335,7 +320,6 @@ export const LESSONS = [
       { h: 'Avoid doubled ideas', body: '"In my opinion, I think" → choose one. "return back" → return. "repeat again" → repeat. "more better" → better.', good: ['In my opinion, remote work is effective.'], bad: ['In my opinion, I think remote work is effective.'] },
     ],
     trap: 'If a phrase came to you as a direct translation, check it here first.',
-    notes2018: 'Your redundancy notes (repeat again, return back, new innovation, join together) were excellent. Add your newer habits: "give contribution", "jobdesk", "more better", "discuss about".',
     id_sum: 'Beberapa frasa terdengar seperti terjemahan langsung dari bahasa Indonesia. Gunakan "contribute" (bukan "give contribution"), "responsibilities" (bukan "jobdesk"), "improve" (bukan "make more better"), "I agree" (bukan "I am agree"), dan "explain something to someone" (bukan "explain me"). Perhatikan makna kata yang sering keliru: elaborate berarti menjelaskan secara rinci, commute berarti perjalanan pergi-pulang kerja. Hindari pengulangan makna seperti "In my opinion, I think".',
     check: [
       { q: 'Natural English for "Saya ingin memberikan kontribusi bagi perusahaan":', o: ['I want to give contribution to the company.', 'I want to contribute to the company.', 'I want to make contribute the company.'], a: 1, why: 'Use the verb "contribute".' },
@@ -355,7 +339,6 @@ export const LESSONS = [
       { h: 'Punctuation with linkers', body: 'However, Therefore, Moreover start a new sentence (or follow a semicolon) and take a comma after them.', good: ['It was risky. However, we tried.', 'It was risky; however, we tried.'], bad: ['It was risky, however we tried.'] },
     ],
     trap: '"Walaupun … tetapi …" → use only ONE: "Although…" OR "…, but…".',
-    notes2018: null,
     id_sum: 'Kata penghubung membuat gagasan tersusun rapi dan bernilai tinggi dalam IELTS. Untuk menambahkan gunakan In addition atau Moreover; untuk pertentangan gunakan However, although, atau despite (+ nomina/-ing); untuk sebab-akibat gunakan because (+ klausa), because of (+ nomina), atau As a result. Jangan memakai "although" dan "but" sekaligus dalam satu kalimat. Kata However, Therefore, dan Moreover diletakkan di awal kalimat baru dan diikuti koma.',
     check: [
       { q: '___ the heavy traffic, we arrived on time.', o: ['Although', 'Despite', 'However'], a: 1, why: 'despite + noun' },
@@ -374,7 +357,6 @@ export const LESSONS = [
       { h: 'Spelling you often need', body: 'myself, facilities, grammar, responsibility, necessary, accommodation, schedule, colleague, environment, separate, receive.', good: ['facilities', 'myself', 'grammar'], bad: ['fasilities', 'my self', 'grammer'] },
     ],
     trap: 'In IELTS writing, spellcheck is off. Learn the words you use often.',
-    notes2018: null,
     id_sum: 'Dua kalimat lengkap tidak boleh digabung hanya dengan koma; gunakan titik, titik koma, atau kata penghubung. Berikan koma setelah frasa atau anak kalimat pembuka. Huruf kapital dipakai untuk awal kalimat, nama orang, hari, bulan, negara, kebangsaan, dan bahasa, tetapi tidak untuk nomina biasa di tengah kalimat.',
     check: [
       { q: 'Choose the correct sentence.', o: ['The gym is busy, we need more staff.', 'The gym is busy, so we need more staff.', 'The gym is busy so, we need more staff.'], a: 1, why: 'Use a linking word.' },
@@ -392,7 +374,6 @@ export const LESSONS = [
       { h: 'Useful formal openers', body: 'I am writing to enquire about… / I am writing to complain about… / I am writing to apply for… / Thank you for your email regarding…', good: ['I am writing to apply for the position of Operations Supervisor.'], bad: ['I want to tell you that I apply the position.'] },
     ],
     trap: '"Mohon dibantu" → "I would appreciate your help with…", not "Please be helped."',
-    notes2018: null,
     id_sum: 'Sesuaikan ragam bahasa dengan penerima. Surat resmi diawali "Dear Mr/Ms + nama" dan ditutup "Yours sincerely", atau diawali "Dear Sir or Madam" dan ditutup "Yours faithfully". Permintaan yang sopan memakai "Could you…?" atau "I would appreciate it if you could…". Dalam tulisan resmi, hindari singkatan (contractions) dan bahasa gaul, serta susun paragraf secara jelas: tujuan, rincian, permintaan tindakan, dan penutup.',
     check: [
       { q: 'You don\'t know the reader\'s name. Close the letter with:', o: ['Yours sincerely,', 'Yours faithfully,', 'Cheers,'], a: 1, why: 'Dear Sir or Madam → Yours faithfully.' },

@@ -293,7 +293,8 @@ async function route(req, env, url) {
     const count = num(b.count, 0, 100) || 0;
     const xp = minutes * XP_PER_MIN + (type === 'drill' ? count * 5 : type === 'review' ? count * 3 : type === 'lesson' ? 40 : 0);
     if (minutes <= 0 && xp <= 0) bad('Nothing to log.');
-    await eventStmt(db, { date: b.date, type, activity, minutes, xp, ref }).run();
+    const id = /^c[a-z0-9]{6,24}$/.test(String(b.id || '')) ? b.id : undefined; // client id makes retries idempotent
+    await eventStmt(db, { id, date: b.date, type, activity, minutes, xp, ref }).run();
     await dayBonuses(db, b.date);
     return json({ ok: true, xp });
   }
