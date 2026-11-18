@@ -93,7 +93,7 @@ export const LESSONS = [
   // ===================== UNIT 3 =====================
   {
     id: 'in-on-at-time', unit: 'u3', title: 'In, on, at for TIME', tags: ['preposition'], mins: 12,
-    why: 'You said you do not know the difference yet. Think of a pyramid: IN for big periods, ON for days, AT for exact points.',
+    why: 'Indonesian uses one word, "pada", where English uses three. Think of a pyramid: IN for big periods, ON for days, AT for exact points.',
     rules: [
       { h: 'IN = long or general periods', body: 'months, years, seasons, centuries, and parts of the day (except night).', good: ['in November', 'in 2026', 'in the rainy season', 'in the morning', 'in the afternoon', 'in the evening'], bad: ['on November', 'at 2026'] },
       { h: 'ON = days and dates', body: 'days of the week, dates, specific days, and a day + part of the day.', good: ['on Monday', 'on 17 December', 'on my birthday', 'on Monday morning', 'on weekdays'], bad: ['in Monday', 'at 17 December'] },

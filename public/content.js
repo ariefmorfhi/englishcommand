@@ -285,6 +285,29 @@ export const STAR = [
   'Where do you see yourself in five years, and how does this role fit that plan?',
 ];
 
+// ---------- Teaching English (general + classroom) ----------
+export const TEACH_EXPLAIN = [
+  'Explain to a 12-year-old student the difference between "much" and "many", with two examples each.',
+  'Explain to a beginner when we use "a" and when we use "an". Give three examples.',
+  'Explain to a student how to form the past simple of regular verbs, and give two irregular examples.',
+  'Explain to a student the difference between "in", "on" and "at" for time, with one example each.',
+  'Explain to a student why we say "She works" but "They work".',
+  'Explain the difference between "bored" and "boring" to a teenager, using a story from school.',
+];
+export const TEACH_CLASS = [
+  'Start a lesson: greet the class, explain today\'s goal, and give the first instruction for a pair activity.',
+  'Give clear instructions for a group task: students make a poster about healthy food in 15 minutes.',
+  'A student keeps talking during the lesson. Speak to the class to bring their attention back politely.',
+  'Close a lesson: summarise what students learned, set homework, and say goodbye.',
+  'Give feedback to a student who answered incorrectly, in a kind and encouraging way.',
+];
+export const TEACH_EMAIL = [
+  { s: 'A student has missed three lessons this month.', p: ['tell the parent what happened', 'explain why attendance matters', 'suggest a meeting time'], to: 'the student\'s parent' },
+  { s: 'Your class is going on a short field trip next Friday.', p: ['explain where and when', 'list what students must bring', 'ask for a signed permission form'], to: 'all parents' },
+  { s: 'A student has improved a lot in English this term.', p: ['share the good news', 'give one specific example', 'suggest how to keep practising at home'], to: 'the student\'s parent' },
+  { s: 'You need to borrow a projector from another teacher for one week.', p: ['explain why you need it', 'say when you will return it', 'thank them'], to: 'a colleague' },
+];
+
 // ---------- Practice tasks (rank letter = level: E Foundation ... S Exam simulation) ----------
 // mode: 'repeat' | 'build' (scored offline) | 'ai' (scored by the AI examiner)
 export const GATES = [
@@ -301,6 +324,9 @@ export const GATES = [
   { id: 'ops-interview', rank: 'A', skill: 'speaking', exam: 'Job Interview', mode: 'ai', title: 'Operations interview (STAR)', desc: '3 interview questions. Use Situation, Task, Action, Result. Up to 2 minutes each.', mins: 7, perQ: 120 },
   { id: 'ielts-ac1', rank: 'A', skill: 'writing', exam: 'IELTS Academic', mode: 'ai', title: 'Academic Task 1 (data)', desc: 'Summarise the table in at least 150 words in 20 minutes.', mins: 20, minWords: 150 },
   { id: 'mock-speaking', rank: 'S', skill: 'speaking', exam: 'IELTS', mode: 'ai', title: 'Full speaking mock', desc: 'Part 1 (3 Qs) + Part 2 (cue card) + Part 3 (3 Qs) in one run.', mins: 14 },
+  { id: 'teach-explain', rank: 'D', skill: 'speaking', exam: 'Teaching', mode: 'ai', title: 'Explain a grammar point', desc: 'Explain a rule to a student simply, with examples. Up to 2 minutes.', mins: 4, perQ: 120 },
+  { id: 'teach-class', rank: 'C', skill: 'speaking', exam: 'Teaching', mode: 'ai', title: 'Classroom language', desc: 'Give instructions or feedback to a class. Up to 90 seconds each, 2 situations.', mins: 5, perQ: 90 },
+  { id: 'teach-email', rank: 'C', skill: 'writing', exam: 'Teaching', mode: 'ai', title: 'Email to parents or colleagues', desc: 'A clear, polite school email. Target: 10 minutes, 100+ words.', mins: 10, minWords: 100 },
   { id: 'mock-writing', rank: 'S', skill: 'writing', exam: 'IELTS', mode: 'ai', title: 'Exam-mode essay', desc: 'Task 2 under strict exam rules: 40 minutes, no pausing, 250+ words.', mins: 40, minWords: 250, strict: true },
 ];
 
@@ -347,6 +373,14 @@ export function makeTask(gate) {
         prepAt: 3,
       };
     }
+    case 'teach-explain':
+      return { header: 'You are the teacher', questions: [pick(TEACH_EXPLAIN)] };
+    case 'teach-class':
+      return { header: 'You are the teacher', questions: sample(TEACH_CLASS, 2) };
+    case 'teach-email': {
+      const e = pick(TEACH_EMAIL);
+      return { prompt: `${e.s}\n\nWrite an email to ${e.to}. In your email:\n• ${e.p.join('\n• ')}` };
+    }
     case 'toefl-email': {
       const e = pick(EMAIL);
       return { prompt: `${e.s}\n\nWrite an email to ${e.to}. In your email:\n• ${e.p.join('\n• ')}` };
@@ -372,6 +406,8 @@ export function makeTask(gate) {
 }
 
 // ---------- Daily Quest blocks per chapter (minutes, total 90) ----------
+// Phase boundaries are proportional to each person's start → end dates (22%, 50%, 75%).
+export const PHASE_SPLIT = [0, 0.22, 0.5, 0.75, 1];
 export const CHAPTERS = [
   { n: 1, name: 'Fix the habits', start: '2026-11-17', end: '2026-12-14', focus: 'Learn the core rules, fix your top error patterns, and speak without long pauses.', blocks: { grammar: 15, debuff: 10, speaking: 25, writing: 20, listening: 10, phrases: 10 } },
   { n: 2, name: 'Expand your range', start: '2026-12-15', end: '2027-01-25', focus: 'Opinions, explanations, emails and complex sentences.', blocks: { grammar: 10, debuff: 10, speaking: 30, writing: 20, listening: 10, phrases: 10 } },
@@ -384,8 +420,8 @@ export const BLOCK_INFO = {
   debuff: { label: 'Error drill', where: 'review', note: 'Short quiz on your most frequent error patterns.' },
   speaking: { label: 'Speaking practice', where: 'practice', note: 'Record an answer, read the feedback, then shadow the improved version.' },
   writing: { label: 'Writing practice', where: 'practice', note: 'Write, read the feedback, then rewrite one corrected sentence from memory.' },
-  listening: { label: 'Listening & Shadowing', where: 'timer', note: 'Listen to an English source, pause, and repeat sentences aloud.' },
-  phrases: { label: 'Phrase Review', where: 'review', note: 'Review due phrases and say each one in your own sentence.' },
+  listening: { label: 'Listening and shadowing', where: 'timer', note: 'Listen to an English source, pause, and repeat sentences aloud.' },
+  phrases: { label: 'Phrase review', where: 'review', note: 'Review due phrases and say each one in your own sentence.' },
 };
 
 export const LISTENING_SOURCES = [
@@ -397,8 +433,8 @@ export const LISTENING_SOURCES = [
 
 // ---------- Partner platforms (official / tested) ----------
 export const SIDE_QUESTS = [
-  { key: 'speak-improve', name: 'Speak & Improve (Cambridge)', url: 'https://speakandimprove.com/', every: 7, why: 'Pronunciation and a CEFR speaking estimate — the one thing this app cannot judge.' },
-  { key: 'write-improve', name: 'Write & Improve (Cambridge)', url: 'https://writeandimprove.com/', every: 7, why: 'A second, independent writing score to cross-check the AI feedback here.' },
+  { key: 'speak-improve', name: 'Speak and Improve (Cambridge)', url: 'https://speakandimprove.com/', every: 7, why: 'Pronunciation and a CEFR speaking estimate — the one thing this app cannot judge.' },
+  { key: 'write-improve', name: 'Write and Improve (Cambridge)', url: 'https://writeandimprove.com/', every: 7, why: 'A second, independent writing score to cross-check the AI feedback here.' },
   { key: 'ielts-ready', name: 'IELTS Ready mock (British Council)', url: 'https://takeielts.britishcouncil.org/take-ielts/prepare', every: 30, why: 'Official IELTS-format mock with estimated band.' },
   { key: 'human-talk', name: 'Talk with a human (HelloTalk / Tandem / friend)', url: 'https://www.hellotalk.com/', every: 7, why: 'Real conversation pressure. Start by Chapter 2.' },
   { key: 'efset-quick', name: 'EF SET 50-min check (optional)', url: 'https://www.efset.org/', every: 14, why: 'Mid-month reading/listening check.' },
@@ -418,12 +454,55 @@ export const END_DATE = '2027-03-31';
 
 export const LEVELS = { E: 'Foundation', D: 'Core', C: 'Intermediate', B: 'Upper-intermediate', A: 'Advanced', S: 'Exam simulation' };
 
-// Suggested task per phase for Today's plan (rotates daily)
+// Suggested tasks per focus and phase (rotate daily)
 export const PLAN_TASKS = {
-  1: { speaking: ['toefl-repeat', 'ielts-p1', 'toefl-interview'], writing: ['toefl-build', 'toefl-email'] },
-  2: { speaking: ['ielts-p1', 'toefl-interview', 'ielts-p2'], writing: ['toefl-email', 'ielts-gt1', 'toefl-discussion'] },
-  3: { speaking: ['ielts-p2', 'ielts-p3', 'ops-interview'], writing: ['ielts-gt1', 'toefl-discussion', 'ielts-task2', 'ielts-ac1'] },
-  4: { speaking: ['mock-speaking', 'ielts-p3', 'ops-interview'], writing: ['mock-writing', 'ielts-task2', 'ielts-gt1'] },
+  'ielts-gt': {
+    1: { speaking: ['toefl-repeat', 'ielts-p1', 'toefl-interview'], writing: ['toefl-build', 'toefl-email'] },
+    2: { speaking: ['ielts-p1', 'toefl-interview', 'ielts-p2'], writing: ['toefl-email', 'ielts-gt1', 'toefl-discussion'] },
+    3: { speaking: ['ielts-p2', 'ielts-p3', 'ops-interview'], writing: ['ielts-gt1', 'toefl-discussion', 'ielts-task2'] },
+    4: { speaking: ['mock-speaking', 'ielts-p3', 'ops-interview'], writing: ['mock-writing', 'ielts-task2', 'ielts-gt1'] },
+  },
+  'ielts-ac': {
+    1: { speaking: ['toefl-repeat', 'ielts-p1', 'toefl-interview'], writing: ['toefl-build', 'toefl-email'] },
+    2: { speaking: ['ielts-p1', 'ielts-p2', 'toefl-interview'], writing: ['ielts-ac1', 'toefl-discussion', 'toefl-email'] },
+    3: { speaking: ['ielts-p2', 'ielts-p3', 'ops-interview'], writing: ['ielts-ac1', 'ielts-task2', 'toefl-discussion'] },
+    4: { speaking: ['mock-speaking', 'ielts-p3'], writing: ['mock-writing', 'ielts-ac1', 'ielts-task2'] },
+  },
+  toefl: {
+    1: { speaking: ['toefl-repeat', 'toefl-interview'], writing: ['toefl-build', 'toefl-email'] },
+    2: { speaking: ['toefl-interview', 'toefl-repeat', 'ielts-p1'], writing: ['toefl-email', 'toefl-discussion', 'toefl-build'] },
+    3: { speaking: ['toefl-interview', 'ielts-p3', 'ops-interview'], writing: ['toefl-discussion', 'toefl-email', 'ielts-task2'] },
+    4: { speaking: ['toefl-interview', 'mock-speaking'], writing: ['toefl-discussion', 'toefl-email', 'mock-writing'] },
+  },
+  'general-teaching': {
+    1: { speaking: ['toefl-repeat', 'teach-explain', 'ielts-p1'], writing: ['toefl-build', 'teach-email', 'toefl-email'] },
+    2: { speaking: ['teach-explain', 'teach-class', 'ielts-p1', 'toefl-interview'], writing: ['teach-email', 'toefl-email', 'ielts-gt1'] },
+    3: { speaking: ['teach-class', 'ielts-p2', 'teach-explain', 'ielts-p3'], writing: ['teach-email', 'ielts-gt1', 'toefl-discussion'] },
+    4: { speaking: ['ielts-p2', 'teach-class', 'ielts-p3'], writing: ['ielts-task2', 'teach-email', 'ielts-gt1'] },
+  },
+};
+
+export const FOCUS = {
+  'ielts-gt': 'IELTS General Training',
+  'ielts-ac': 'IELTS Academic',
+  toefl: 'TOEFL iBT',
+  'general-teaching': 'General English and teaching (with IELTS/TOEFL practice)',
+};
+
+// Share of the daily target for each block, per phase (sums to 1). Teaching focus gets more grammar.
+export const BLOCK_SHARE = {
+  default: [
+    { grammar: 0.17, debuff: 0.11, speaking: 0.28, writing: 0.22, listening: 0.11, phrases: 0.11 },
+    { grammar: 0.11, debuff: 0.11, speaking: 0.33, writing: 0.23, listening: 0.11, phrases: 0.11 },
+    { grammar: 0.06, debuff: 0.11, speaking: 0.33, writing: 0.33, listening: 0.11, phrases: 0.06 },
+    { grammar: 0.06, debuff: 0.06, speaking: 0.39, writing: 0.33, listening: 0.10, phrases: 0.06 },
+  ],
+  'general-teaching': [
+    { grammar: 0.30, debuff: 0.15, speaking: 0.20, writing: 0.15, listening: 0.10, phrases: 0.10 },
+    { grammar: 0.25, debuff: 0.10, speaking: 0.25, writing: 0.20, listening: 0.10, phrases: 0.10 },
+    { grammar: 0.15, debuff: 0.10, speaking: 0.30, writing: 0.25, listening: 0.10, phrases: 0.10 },
+    { grammar: 0.10, debuff: 0.10, speaking: 0.35, writing: 0.25, listening: 0.10, phrases: 0.10 },
+  ],
 };
 
 // Baseline used for "gap closed" (EF SET, 17 Nov 2026)
