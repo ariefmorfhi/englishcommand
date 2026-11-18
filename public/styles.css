@@ -53,8 +53,8 @@ button { font: inherit; color: inherit; }
 .brand-mark i { width: 8px; height: 8px; border-radius: 50%; background: var(--sky); }
 .top-right { display: flex; gap: 8px; align-items: center; }
 .icon-btn { width: 38px; height: 38px; border-radius: 50%; border: 0.5px solid var(--line-2); background: var(--surface); cursor: pointer; display: grid; place-items: center; color: var(--ink); }
-#nav { position: fixed; bottom: calc(10px + var(--safe-b)); left: 50%; transform: translateX(-50%); z-index: 10; display: grid; grid-template-columns: repeat(5, 1fr); width: min(460px, calc(100% - 20px)); background: rgba(249, 251, 254, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 0.5px solid var(--line); border-radius: 999px; padding: 6px; box-shadow: 0 18px 40px -26px rgba(5, 38, 89, 0.45); }
-#nav button { background: none; border: 0; border-radius: 999px; padding: 7px 0 6px; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.72rem; color: var(--muted); cursor: pointer; }
+#nav { position: fixed; bottom: calc(10px + var(--safe-b)); left: 50%; transform: translateX(-50%); z-index: 10; display: grid; grid-template-columns: repeat(6, 1fr); width: min(500px, calc(100% - 16px)); background: rgba(249, 251, 254, 0.92); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 0.5px solid var(--line); border-radius: 999px; padding: 6px; box-shadow: 0 18px 40px -26px rgba(5, 38, 89, 0.45); }
+#nav button { background: none; border: 0; border-radius: 999px; padding: 7px 0 6px; min-width: 0; display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 0.72rem; color: var(--muted); cursor: pointer; }
 #nav button svg { width: 20px; height: 20px; }
 #nav button.active { background: var(--ink); color: var(--on-ink); }
 
@@ -207,3 +207,8 @@ label { display: block; font-size: 0.8rem; color: var(--muted); margin: 10px 0 5
   .big { font-size: 2.3rem; }
   .grid2 { grid-template-columns: 1fr; }
 }
+
+details.card summary { list-style: none; }
+details.card summary::-webkit-details-marker { display: none; }
+details.card summary::after { content: ' ›'; }
+@media (max-width: 380px) { #nav button { font-size: 0.64rem; } }

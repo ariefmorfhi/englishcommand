@@ -70,13 +70,13 @@ export const DRILLS = {
     { q: 'Could you ___ me how to use this tool?', o: ['explain', 'tell', 'say'], a: 1, why: 'tell someone how; explain TO someone.' },
   ],
   l1_transfer: [
-    { q: 'Natural English for "memberikan kontribusi":', o: ['give contribution', 'contribute', 'make contribute'], a: 1, why: 'Use the verb "contribute".' },
-    { q: 'Natural English for "jobdesk":', o: ['job desk', 'responsibilities', 'job desks'], a: 1, why: '"Jobdesk" is Indonesian usage.' },
-    { q: '"Saya mau tahu bagaimana..." =', o: ['I want to know about how...', 'I want to know how...', 'I want know how...'], a: 1, why: 'know how (no "about").' },
+    { q: 'Padanan yang wajar untuk "memberikan kontribusi":', o: ['give contribution', 'contribute', 'make contribute'], a: 1, why: 'Use the verb "contribute".' },
+    { q: 'Padanan yang wajar untuk "uraian tugas" (sering disebut "jobdesk"):', o: ['job desk', 'responsibilities', 'job desks'], a: 1, why: '"Jobdesk" is not an English word.' },
+    { q: '"Saya ingin tahu bagaimana..." =', o: ['I want to know about how...', 'I want to know how...', 'I want know how...'], a: 1, why: 'know how (no "about").' },
     { q: '"Dia sudah menikah" =', o: ['She already married.', 'She is already married.', 'She has married already.'], a: 1, why: 'married is an adjective here: be married.' },
     { q: '"Saya setuju dengan Anda" =', o: ['I am agree with you.', 'I agree with you.', 'I agreed with you now.'], a: 1, why: '"agree" is a verb; no "am".' },
-    { q: '"Bisa kasih saya..." (polite request) =', o: ['Can you give me...', 'Could you please send me...', 'You can give me...'], a: 1, why: 'Could you please... is polite and natural.' },
-    { q: '"Kita discuss besok" =', o: ['We discuss about it tomorrow.', 'Let\'s discuss it tomorrow.', 'We will discussion tomorrow.'], a: 1, why: 'discuss + object, no "about".' },
+    { q: '"Mohon kirimkan kepada saya..." (permintaan sopan) =', o: ['Can you give me...', 'Could you please send me...', 'You can give me...'], a: 1, why: 'Could you please... is polite and natural.' },
+    { q: '"Mari kita bahas hal itu besok." =', o: ['We discuss about it tomorrow.', 'Let\'s discuss it tomorrow.', 'We will discussion tomorrow.'], a: 1, why: 'discuss + object, no "about".' },
   ],
   sentence_structure: [
     { q: 'Choose the correct sentence:', o: ['Is very important to practise.', 'It is very important to practise.', 'Very important practise.'], a: 1, why: 'English needs a subject: It is...' },
@@ -373,13 +373,14 @@ export function makeTask(gate) {
 
 // ---------- Daily Quest blocks per chapter (minutes, total 90) ----------
 export const CHAPTERS = [
-  { n: 1, name: 'Fix the habits', start: '2026-11-17', end: '2026-12-14', focus: 'Kill your top debuffs and speak without long pauses.', blocks: { debuff: 15, speaking: 30, writing: 20, listening: 15, phrases: 10 } },
-  { n: 2, name: 'Expand your range', start: '2026-12-15', end: '2027-01-25', focus: 'Opinions, explanations, emails and complex sentences.', blocks: { debuff: 10, speaking: 30, writing: 25, listening: 15, phrases: 10 } },
-  { n: 3, name: 'Professional and exam performance', start: '2027-01-26', end: '2027-03-01', focus: 'Part 2/3, Task 2 essays and STAR interview answers.', blocks: { debuff: 10, speaking: 30, writing: 30, listening: 10, phrases: 10 } },
-  { n: 4, name: 'Full simulations', start: '2027-03-02', end: '2027-03-31', focus: 'Full mocks under exam conditions.', blocks: { debuff: 5, speaking: 35, writing: 35, listening: 10, phrases: 5 } },
+  { n: 1, name: 'Fix the habits', start: '2026-11-17', end: '2026-12-14', focus: 'Learn the core rules, fix your top error patterns, and speak without long pauses.', blocks: { grammar: 15, debuff: 10, speaking: 25, writing: 20, listening: 10, phrases: 10 } },
+  { n: 2, name: 'Expand your range', start: '2026-12-15', end: '2027-01-25', focus: 'Opinions, explanations, emails and complex sentences.', blocks: { grammar: 10, debuff: 10, speaking: 30, writing: 20, listening: 10, phrases: 10 } },
+  { n: 3, name: 'Professional and exam performance', start: '2027-01-26', end: '2027-03-01', focus: 'Part 2/3, Task 2 essays and STAR interview answers.', blocks: { grammar: 5, debuff: 10, speaking: 30, writing: 30, listening: 10, phrases: 5 } },
+  { n: 4, name: 'Full simulations', start: '2027-03-02', end: '2027-03-31', focus: 'Full mocks under exam conditions.', blocks: { grammar: 5, debuff: 5, speaking: 35, writing: 30, listening: 10, phrases: 5 } },
 ];
 
 export const BLOCK_INFO = {
+  grammar: { label: 'Grammar lesson', where: 'learn', note: 'Read one lesson, then pass its quick check (80%+).' },
   debuff: { label: 'Error drill', where: 'review', note: 'Short quiz on your most frequent error patterns.' },
   speaking: { label: 'Speaking practice', where: 'practice', note: 'Record an answer, read the feedback, then shadow the improved version.' },
   writing: { label: 'Writing practice', where: 'practice', note: 'Write, read the feedback, then rewrite one corrected sentence from memory.' },

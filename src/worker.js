@@ -252,7 +252,7 @@ async function route(req, env, url) {
   if (path === '/api/state' && m === 'GET') {
     const date = url.searchParams.get('date');
     if (!isDate(date)) bad('date required');
-    const [days, today, attempts, gateStats, errors, phrases, tests, quests, metaRows] = await db.batch([
+    const [days, today, attempts, gateStats, errors, phrases, tests, quests, metaRows, lessons] = await db.batch([
       db.prepare('SELECT date, SUM(minutes) AS minutes, SUM(xp) AS xp FROM events GROUP BY date ORDER BY date'),
       db.prepare("SELECT COALESCE(activity,'other') AS activity, SUM(minutes) AS minutes FROM events WHERE date=? GROUP BY 1").bind(date),
       db.prepare('SELECT * FROM attempts ORDER BY created_at DESC LIMIT 60'),
@@ -262,6 +262,7 @@ async function route(req, env, url) {
       db.prepare('SELECT * FROM tests ORDER BY date, created_at'),
       db.prepare("SELECT date, ref FROM events WHERE type='quest' ORDER BY date DESC LIMIT 300"),
       db.prepare("SELECT key, value FROM meta WHERE key IN ('name','targets') OR key=?").bind('ai:' + now().slice(0, 10)),
+      db.prepare("SELECT ref AS id, MIN(date) AS date FROM events WHERE type='lesson' AND ref IS NOT NULL GROUP BY ref"),
     ]);
     const meta = {};
     for (const r of metaRows.results) { try { meta[r.key] = JSON.parse(r.value); } catch { meta[r.key] = r.value; } }
@@ -276,6 +277,7 @@ async function route(req, env, url) {
       phrases: phrases.results,
       tests: tests.results,
       quests: quests.results,
+      lessons: lessons.results,
       mana: { used: Number(meta['ai:' + now().slice(0, 10)]) || 0, max: MANA_MAX },
     });
   }
@@ -284,13 +286,14 @@ async function route(req, env, url) {
   if (path === '/api/event' && m === 'POST') {
     const b = await body();
     if (!isDate(b.date)) bad('date required');
-    const type = ['study', 'drill', 'review'].includes(b.type) ? b.type : 'study';
-    const activity = ['debuff', 'speaking', 'writing', 'listening', 'phrases', 'other'].includes(b.activity) ? b.activity : 'other';
+    const type = ['study', 'drill', 'review', 'lesson'].includes(b.type) ? b.type : 'study';
+    const activity = ['grammar', 'debuff', 'speaking', 'writing', 'listening', 'phrases', 'other'].includes(b.activity) ? b.activity : 'other';
+    const ref = type === 'lesson' && /^[a-z0-9-]{2,40}$/.test(String(b.ref || '')) ? b.ref : null;
     const minutes = Math.round((num(b.minutes, 0, 180) || 0) * 10) / 10;
     const count = num(b.count, 0, 100) || 0;
-    const xp = minutes * XP_PER_MIN + (type === 'drill' ? count * 5 : type === 'review' ? count * 3 : 0);
+    const xp = minutes * XP_PER_MIN + (type === 'drill' ? count * 5 : type === 'review' ? count * 3 : type === 'lesson' ? 40 : 0);
     if (minutes <= 0 && xp <= 0) bad('Nothing to log.');
-    await eventStmt(db, { date: b.date, type, activity, minutes, xp }).run();
+    await eventStmt(db, { date: b.date, type, activity, minutes, xp, ref }).run();
     await dayBonuses(db, b.date);
     return json({ ok: true, xp });
   }

@@ -3,6 +3,7 @@ import {
   CATEGORIES, DRILLS, GATES, makeTask, CHAPTERS, BLOCK_INFO, LISTENING_SOURCES,
   SIDE_QUESTS, RAIDS, TARGETS, END_DATE, LEVELS, PLAN_TASKS, BASELINE,
 } from './content.js';
+import { UNITS, LESSONS, LESSON, CATEGORY_LESSON } from './grammar.js';
 
 // ================= utilities =================
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -96,7 +97,9 @@ function derive() {
   const bestBand = { speaking: 0, writing: 0 };
   for (const g of S.gateStats) { const gd = GATE[g.gate_id]; if (gd && g.best_band) bestBand[gd.skill] = Math.max(bestBand[gd.skill], g.best_band); }
   const nextCheck = RAIDS.find((r) => r.date >= t) || null;
-  return { t, dayMap, todayMin, actMin, streak, best, fullDays, totalMin, weekMin, monday, latest, gapPct, gapLeft, patterns, cleared, due, bestBand, nextCheck, phase: phaseOf(t) };
+  const doneLessons = new Set((S.lessons || []).map((l) => l.id));
+  const nextLesson = LESSONS.find((l) => !doneLessons.has(l.id)) || null;
+  return { doneLessons, nextLesson, t, dayMap, todayMin, actMin, streak, best, fullDays, totalMin, weekMin, monday, latest, gapPct, gapLeft, patterns, cleared, due, bestBand, nextCheck, phase: phaseOf(t) };
 }
 
 function milestones(D) {
@@ -106,6 +109,9 @@ function milestones(D) {
   const bb = Math.max(D.bestBand.speaking, D.bestBand.writing);
   return [
     ['First session', 'Complete one practice task', n >= 1],
+    ['First lesson', 'Pass one grammar lesson', D.doneLessons.size >= 1],
+    ['Foundations', 'Pass all lessons in Units 1–3', LESSONS.filter((l) => ['u1', 'u2', 'u3'].includes(l.unit)).every((l) => D.doneLessons.has(l.id))],
+    ['Syllabus complete', 'Pass every grammar lesson', D.doneLessons.size >= LESSONS.length],
     ['First full day', 'Train 90 minutes in one day', D.fullDays >= 1],
     ['One week steady', '7-day streak', D.best >= 7],
     ['One month steady', '30-day streak', D.best >= 30],
@@ -262,7 +268,7 @@ function render() {
   $$('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.view === VIEW));
   if (RUN) return RUN.render();
   const D = derive();
-  const views = { home: vHome, today: vToday, practice: vPractice, review: vReview, progress: vProgress, settings: vSettings };
+  const views = { home: vHome, today: vToday, learn: vLearn, practice: vPractice, review: vReview, progress: vProgress, settings: vSettings };
   (views[VIEW] || vHome)(D);
 }
 function bindGo() { $$('[data-go]').forEach((b) => (b.onclick = () => { if (b.dataset.sub) SUB[b.dataset.go] = b.dataset.sub; go(b.dataset.go); })); }
@@ -307,7 +313,7 @@ function vHome(D) {
     <div class="card-head"><span class="label"><span class="num">01</span>Today</span><span class="small muted">${Math.round(D.todayMin)} / 90 min</span></div>
     <div class="bar"><i style="width:${qpct}%"></i><span class="mark" style="left:${(20 / 90) * 100}%"></span></div>
     <p class="small muted" style="margin:10px 0 0">${D.todayMin >= 90 ? 'Done for today. Anything extra is a bonus.' : D.todayMin >= 20 ? 'Streak is safe. Keep going toward 90 minutes.' : '20 minutes keeps your streak. 90 minutes completes the day.'}</p>
-    <div class="row mt wrap"><button class="btn" data-go="today">Open today's plan</button><button class="btn ghost" data-start="${plan.speaking.id}">${esc(plan.speaking.title)}</button></div>
+    <div class="row mt wrap"><button class="btn" data-go="today">Open today's plan</button>${D.nextLesson ? `<button class="btn ghost" data-lesson="${D.nextLesson.id}">Lesson · ${esc(D.nextLesson.title)}</button>` : ''}</div>
   </div>
 
   <div class="card">
@@ -335,7 +341,7 @@ function vHome(D) {
     <div class="list">${D.patterns.slice(0, 3).map((c) => `<div class="li row between"><div><div>${esc(CATEGORIES[c.key]?.name || c.key)}</div><div class="xs muted">${esc(CATEGORIES[c.key]?.hint || '')}</div></div><span class="count">${c.recent}</span></div>`).join('') || '<p class="muted small" style="margin:0">No recurring errors in the last 14 days.</p>'}</div>
     ${D.patterns.length ? '<button class="btn ghost full mt" data-go="review">Review and drill</button>' : ''}
   </div>`;
-  bindGo(); bindStart();
+  bindGo(); bindStart(); bindLesson();
 }
 
 // ================= TODAY =================
@@ -346,6 +352,7 @@ function vToday(D) {
   const doneCount = blocks.filter(([k, tg]) => (D.actMin[k] || 0) >= tg).length;
   const action = (k) => {
     if (k === 'speaking' || k === 'writing') return `<button class="btn sm" data-start="${plan[k].id}">Start · ${esc(plan[k].title)}</button><button class="btn sm ghost" data-go="practice" data-sub="${k}">Choose another</button>`;
+    if (k === 'grammar') return D.nextLesson ? `<button class="btn sm" data-lesson="${D.nextLesson.id}">Next lesson · ${esc(D.nextLesson.title)}</button><button class="btn sm ghost" data-go="learn">Syllabus</button>` : '<button class="btn sm" data-go="learn">Review a lesson</button>';
     if (k === 'debuff') return '<button class="btn sm" id="go-drill">Start drill</button>';
     if (k === 'phrases') return `<button class="btn sm" data-go="review" data-sub="phrases">Review ${D.due.length} due</button>`;
     return `<button class="btn sm" data-timer="${k}">Start timer</button>`;
@@ -380,7 +387,7 @@ function vToday(D) {
     </div>
     <button class="btn full mt" id="m-log">Log time</button>
   </div>`;
-  bindStart(); bindGo();
+  bindStart(); bindGo(); bindLesson();
   $$('[data-timer]').forEach((b) => (b.onclick = () => startTimer(b.dataset.timer)));
   $('#go-drill') && ($('#go-drill').onclick = () => { const keys = D.patterns.map((c) => c.key).filter((k) => DRILLS[k]).slice(0, 4); startDrill(keys.length ? keys : ['article', 'verb_form', 'preposition']); });
   $('#m-log').onclick = async () => { const m = Number($('#m-min').value); if (!(m > 0)) return toast('Enter the minutes first.', 'err'); await logTime($('#m-act').value, m); };
@@ -587,7 +594,7 @@ function feedbackView(gate, r, response) {
     <p>${esc(f.summary)}</p>
     ${f.strengths?.length ? `<div class="fb-section"><h3>What worked</h3>${f.strengths.map((s) => `<div class="small">· ${esc(s)}</div>`).join('')}</div>` : ''}
     <div class="fb-section"><h3>Corrections</h3><p class="xs dim" style="margin:-4px 0 8px">Saved to your error log.</p>
-      <div class="list">${f.corrections?.length ? f.corrections.map((c) => `<div class="li"><div class="err-line"><span class="wrong">${esc(c.wrong)}</span> → <span class="right">${esc(c.correct)}</span></div><div class="xs muted">${esc(CATEGORIES[c.category]?.name || c.category)} · ${esc(c.explanation)}</div></div>`).join('') : '<p class="muted small">No major errors found.</p>'}</div>
+      <div class="list">${f.corrections?.length ? f.corrections.map((c) => `<div class="li"><div class="err-line"><span class="wrong">${esc(c.wrong)}</span> → <span class="right">${esc(c.correct)}</span></div><div class="xs muted">${esc(CATEGORIES[c.category]?.name || c.category)} · ${esc(c.explanation)}${CATEGORY_LESSON[c.category] ? ` · <a href="#" data-lesson="${CATEGORY_LESSON[c.category]}">Read the rule</a>` : ''}</div></div>`).join('') : '<p class="muted small">No major errors found.</p>'}</div>
     </div>
     <div class="fb-section"><h3>Improved version</h3><div class="improved">${esc(f.upgraded_answer)}</div>
       <div class="row mt wrap"><button class="btn sm" id="f-listen">Listen</button><button class="btn sm ghost" id="f-slow">Listen slowly</button><button class="btn sm ghost" id="f-stop">Stop</button></div>
@@ -601,6 +608,7 @@ function feedbackView(gate, r, response) {
   $('#f-stop').onclick = () => speechSynthesis.cancel();
   $('#f-again').onclick = () => { RUN = null; startTask(gate); };
   $('#f-done').onclick = () => { speechSynthesis.cancel(); RUN = null; go('today'); };
+  bindLesson();
 }
 
 // ---- Listen & Repeat ----
@@ -718,7 +726,7 @@ function vReview(D) {
     body = `<button class="btn full mb" id="d-mixed">Drill my top patterns · 8 questions</button>
     ${D.patterns.map((c) => `<div class="card"><div class="row between"><div><h3>${esc(CATEGORIES[c.key]?.name || c.key)}</h3><div class="xs muted">${esc(CATEGORIES[c.key]?.hint || '')}</div></div><span class="count">${c.recent}</span></div>
       <div class="mt">${c.examples.map((e) => `<div class="err-line"><span class="wrong">${esc(e.wrong)}</span> → <span class="right">${esc(e.correct)}</span></div>`).join('')}</div>
-      ${DRILLS[c.key] ? `<button class="btn sm ghost mt" data-drill="${c.key}">Drill this pattern</button>` : ''}</div>`).join('') || '<div class="card"><p class="muted" style="margin:0">No recurring errors in the last 14 days.</p></div>'}
+      <div class="row wrap mt">${CATEGORY_LESSON[c.key] ? `<button class="btn sm" data-lesson="${CATEGORY_LESSON[c.key]}">Read the rule</button>` : ''}${DRILLS[c.key] ? `<button class="btn sm ghost" data-drill="${c.key}">Drill this pattern</button>` : ''}</div></div>`).join('') || '<div class="card"><p class="muted" style="margin:0">No recurring errors in the last 14 days.</p></div>'}
     ${D.cleared.length ? `<div class="card wash"><span class="label">Fixed — not seen for 14+ days</span><div class="pills mt">${D.cleared.map((c) => `<span class="pill">${esc(CATEGORIES[c.key]?.name || c.key)}</span>`).join('')}</div></div>` : ''}
     <div class="card"><span class="label">All drills · no AI needed</span><div class="pills mt">${Object.keys(DRILLS).map((k) => `<button class="pill" data-drill="${k}">${esc(CATEGORIES[k].name)}</button>`).join('')}</div></div>`;
   } else if (tab === 'log') {
@@ -741,6 +749,7 @@ function vReview(D) {
   $$('[data-t]').forEach((b) => (b.onclick = () => { SUB.review = b.dataset.t; render(); }));
   $$('[data-ef]').forEach((b) => (b.onclick = () => { SUB.errf = b.dataset.ef; render(); }));
   $$('[data-drill]').forEach((b) => (b.onclick = () => startDrill([b.dataset.drill])));
+  bindLesson();
   $('#d-mixed') && ($('#d-mixed').onclick = () => { const keys = D.patterns.map((c) => c.key).filter((k) => DRILLS[k]).slice(0, 4); startDrill(keys.length ? keys : ['article', 'verb_form', 'preposition']); });
   $$('[data-del-err]').forEach((b) => (b.onclick = async () => { if (!confirm('Delete this error? Only do this if the feedback was wrong.')) return; await api('/api/errors/' + b.dataset.delErr, { method: 'DELETE' }); await refresh(); render(); }));
   $$('[data-del-ph]').forEach((b) => (b.onclick = async () => { if (!confirm('Delete this phrase?')) return; await api('/api/phrases/' + b.dataset.delPh, { method: 'DELETE' }); await refresh(); render(); }));
@@ -880,6 +889,121 @@ function chart() {
   }
   for (const r of RAIDS) g += `<text x="${x(r.date)}" y="${H - 6}" fill="#7B8BA3" font-size="11" font-family="Outfit" text-anchor="middle">${fmtDate(r.date)}</text>`;
   return `<div class="chart"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Skill scores over time against targets">${g}</svg></div><div class="legend">${Object.entries(colors).map(([k, c]) => `<span><i style="background:${c}"></i>${cap(k)}</span>`).join('')}</div>`;
+}
+
+// ================= LEARN (grammar syllabus) =================
+function bindLesson() { $$('[data-lesson]').forEach((b) => (b.onclick = (e) => { e.preventDefault(); e.stopPropagation(); openLesson(b.dataset.lesson); })); }
+
+function vLearn(D) {
+  const done = D.doneLessons;
+  const recommended = [...new Set(D.patterns.map((c) => CATEGORY_LESSON[c.key]).filter(Boolean))].filter((id) => !done.has(id)).slice(0, 2);
+  const pct = Math.round((done.size / LESSONS.length) * 100);
+  $('#app').innerHTML = `
+  <div class="page-head"><span class="label"><span class="dot"></span>Grammar syllabus · ${LESSONS.length} lessons</span><h1>Learn the <span class="hl">rules</span></h1></div>
+  <div class="card ink">
+    <div class="row between" style="align-items:flex-end"><div><span class="label">Lessons passed</span><div class="big mt" style="color:var(--sky)">${done.size}<span class="mid muted"> / ${LESSONS.length}</span></div></div>
+    ${D.nextLesson ? `<button class="btn on-ink" data-lesson="${D.nextLesson.id}">Continue</button>` : ''}</div>
+    <div class="bar mt"><i style="width:${Math.max(2, pct)}%"></i></div>
+    <p class="xs muted" style="margin:10px 0 0">Each lesson takes 8–15 minutes. Read it, listen to the examples, then pass the quick check (80%+). Explanations are in English; tap "Ringkasan" for a short summary in Indonesian.</p>
+  </div>
+  ${recommended.length ? `<div class="card"><span class="label"><span class="num">!</span>Recommended for your error patterns</span><div class="list mt">${recommended.map((id) => `<div class="li row between"><span>${esc(LESSON[id].title)}</span><button class="btn sm" data-lesson="${id}">Open</button></div>`).join('')}</div></div>` : ''}
+  ${UNITS.map((u, ui) => {
+    const ls = LESSONS.filter((l) => l.unit === u.id);
+    const d = ls.filter((l) => done.has(l.id)).length;
+    return `<div class="card"><div class="card-head"><span class="label"><span class="num">${String(ui + 1).padStart(2, '0')}</span>${esc(u.name)}</span><span class="xs dim">${d} / ${ls.length}</span></div>
+      <div class="list">${ls.map((l) => `<div class="li click row" data-lesson="${l.id}" style="cursor:pointer"><span class="check ${done.has(l.id) ? 'on' : ''}"></span><div style="flex:1;min-width:0"><div>${esc(l.title)}</div><div class="xs muted">${l.mins} min${l.notes2018 ? ' · includes a fix to your 2018 notes' : ''}</div></div><span class="dim">›</span></div>`).join('')}</div></div>`;
+  }).join('')}`;
+  bindLesson();
+}
+
+function openLesson(id) {
+  const l = LESSON[id]; if (!l) return;
+  if (RUN && !RUN.done && !confirm('Leave this task? Your answer here won\'t be saved.')) return;
+  const t0 = Date.now();
+  const unitName = UNITS.find((u) => u.id === l.unit)?.name || '';
+  const idx = LESSONS.indexOf(l);
+  RUN = {
+    done: true,
+    render() {
+      $$('#nav button').forEach((b) => b.classList.toggle('active', b.dataset.view === 'learn'));
+      $('#app').innerHTML = `
+      <div class="page-head"><span class="label"><span class="dot"></span>Lesson ${idx + 1} of ${LESSONS.length} · ${esc(unitName)}</span><h1 style="font-size:1.7rem">${esc(l.title)}</h1></div>
+      <div class="card wash"><span class="label">Why it matters</span><p style="margin:8px 0 0">${esc(l.why)}</p></div>
+      ${l.notes2018 ? `<div class="card" style="border-color:var(--sky);border-width:1px"><span class="label"><span class="num">!</span>Your 2018 notes said…</span><p class="small" style="margin:8px 0 0">${esc(l.notes2018)}</p></div>` : ''}
+      ${l.rules.map((r, k) => `<div class="card"><div class="card-head"><span class="label"><span class="num">${String(k + 1).padStart(2, '0')}</span>Rule</span></div>
+        <h3 style="font-size:1.1rem;font-weight:500">${esc(r.h)}</h3><p style="margin:6px 0 10px">${esc(r.body)}</p>
+        ${r.good.length ? `<div class="list">${r.good.map((g) => `<div class="li row between"><span><span class="right">✓</span> ${esc(g)}</span><button class="btn sm ghost" data-say="${esc(g.replace(/\s*\(.*\)$/, ''))}" style="padding:2px 10px">Play</button></div>`).join('')}</div>` : ''}
+        ${r.bad.length ? `<div class="list mt">${r.bad.map((b) => `<div class="li"><span class="down">✗</span> <span class="wrong">${esc(b)}</span></div>`).join('')}</div>` : ''}
+      </div>`).join('')}
+      <div class="card ink"><span class="label">Watch out</span><p style="margin:8px 0 0">${esc(l.trap)}</p></div>
+      <details class="card"><summary class="label" style="cursor:pointer">Ringkasan dalam bahasa Indonesia</summary><p class="small" style="margin:10px 0 0">${esc(l.id_sum)}</p></details>
+      <button class="btn full" id="ls-check">Take the quick check · ${l.check.length} questions</button>
+      <div class="row mt"><button class="btn ghost" style="flex:1" id="ls-back">Back to syllabus</button></div>`;
+      $$('[data-say]').forEach((b) => (b.onclick = () => speak(b.dataset.say)));
+      $('#ls-back').onclick = () => { RUN = null; go('learn'); };
+      $('#ls-check').onclick = () => lessonCheck(l, t0);
+      window.scrollTo(0, 0);
+    },
+  };
+  render();
+}
+
+function lessonCheck(l, t0) {
+  const qs = shuffle(l.check).map((q) => { const order = shuffle(q.o.map((t, k) => ({ t, k }))); return { ...q, opts: order, ans: order.findIndex((x) => x.k === q.a) }; });
+  let i = 0, right = 0, answered = false;
+  RUN = {
+    done: false,
+    render() {
+      if (i >= qs.length) return finish();
+      const q = qs[i];
+      $('#app').innerHTML = `<div class="card"><div class="card-head"><span class="label"><span class="dot"></span>Quick check · ${esc(l.title)}</span><span class="xs dim">${i + 1} of ${qs.length}</span></div>
+        <div class="steps">${qs.map((_, k) => `<i class="${k <= i ? 'on' : ''}"></i>`).join('')}</div>
+        <div class="question">${esc(q.q)}</div>
+        <div class="opts">${q.opts.map((o, k) => `<button class="opt" data-o="${k}">${esc(o.t)}</button>`).join('')}</div>
+        <div id="lc-why" class="mt"></div>
+        <button class="btn full mt" id="lc-next" disabled>${i < qs.length - 1 ? 'Next' : 'See result'}</button></div>`;
+      answered = false;
+      $$('[data-o]').forEach((b) => (b.onclick = () => {
+        if (answered) return; answered = true;
+        const k = +b.dataset.o; const ok = k === q.ans; if (ok) right++;
+        b.classList.add(ok ? 'correct' : 'incorrect'); $$('[data-o]')[q.ans].classList.add('correct');
+        $('#lc-why').innerHTML = `<div class="small ${ok ? 'up' : 'down'}">${ok ? 'Correct.' : 'Not quite.'}</div><div class="small muted">${esc(q.why)}</div>`;
+        $('#lc-next').disabled = false;
+      }));
+      $('#lc-next').onclick = () => { i++; RUN.render(); };
+    },
+  };
+  async function finish() {
+    const score = Math.round((right / qs.length) * 100);
+    const passed = score >= 80;
+    const mins = Math.max(1, Math.min(60, Math.round(((Date.now() - t0) / 60000) * 10) / 10));
+    try {
+      await api('/api/event', { body: { date: today(), type: passed ? 'lesson' : 'study', activity: 'grammar', minutes: mins, ref: passed ? l.id : undefined } });
+      await refresh();
+    } catch (e) { toast(esc(e.message), 'err'); }
+    const D = derive();
+    const next = LESSONS[LESSONS.indexOf(l) + 1];
+    const drillKey = l.tags.find((t) => DRILLS[t]);
+    RUN = {
+      done: true,
+      render() {
+        $('#app').innerHTML = `<div class="card"><span class="label"><span class="dot"></span>${esc(l.title)}</span>
+          <div class="row between mt" style="align-items:flex-end"><div><span class="xs muted">Score</span><div class="band">${score}%</div></div><span class="pill">${passed ? 'Lesson passed' : 'Not passed yet'}</span></div>
+          <p>${passed ? 'Well done. Use this rule in your next speaking or writing task — that is where it becomes a habit.' : 'You need 80% to pass. Read the rules once more, then try again.'}</p>
+          <div class="row wrap mt">
+            ${passed ? (next ? `<button class="btn" data-lesson="${next.id}">Next lesson</button>` : '') : `<button class="btn" data-lesson="${l.id}">Read again</button>`}
+            ${drillKey ? `<button class="btn ghost" id="lr-drill">Extra drill</button>` : ''}
+            <button class="btn ghost" id="lr-back">Syllabus</button>
+          </div>
+          <p class="xs dim mt">${D.doneLessons.size} of ${LESSONS.length} lessons passed.</p></div>`;
+        bindLesson();
+        $('#lr-back').onclick = () => { RUN = null; go('learn'); };
+        if ($('#lr-drill')) $('#lr-drill').onclick = () => startDrill([drillKey]);
+      },
+    };
+    render();
+  }
+  render();
 }
 
 // ================= SETTINGS =================
